@@ -515,7 +515,16 @@ private fun QrChoiceScreen(onScan: () -> Unit, onReceive: () -> Unit, onBack: ()
 @Composable
 private fun QrReceiveScreen(state: BankUiState, onBack: () -> Unit, onGenerate: (Double) -> Unit) {
     var amountText by remember { mutableStateOf("20") }
-    val payload = state.qrPayload ?: "scpay:${state.user?.id ?: 1000}:$amountText"
+    // Use the backend‑generated payload (base64 JSON). If not yet generated, create a demo payload that matches the backend schema.
+    val payload = state.qrPayload ?: run {
+        val demoMap = mapOf(
+            "type" to "bank_payment",
+            "account_id" to (state.user?.id ?: 1000),
+            "amount" to (amountText.toDoubleOrNull() ?: 0.0)
+        )
+        val json = Gson().toJson(demoMap)
+        Base64.encodeToString(json.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
+    }
     val context = LocalContext.current
 
     LazyColumn(
