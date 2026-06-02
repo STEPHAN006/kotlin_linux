@@ -1,64 +1,166 @@
 package com.stephan.mobil.data.repository
 
+import android.content.Context
 import com.stephan.mobil.data.api.ApiService
-import com.stephan.mobil.data.model.BalanceResponse
-import com.stephan.mobil.data.model.Transaction
+import com.stephan.mobil.data.model.*
+import com.stephan.mobil.security.SecurityUtil
 import kotlinx.coroutines.delay
 
-class BankRepository(private val apiService: ApiService) {
-
-    // Variables pour gérer le mode Mock
+class BankRepository(
+    private val apiService: ApiService,
+    private val context: Context
+) {
     var useMockData = true
 
-    // ==========================================
-    // MOCK DATA
-    // ==========================================
-    private val mockBalance = BalanceResponse(balance = 1250000.0, currency = "MGA")
-    
-    private val mockTransactions = listOf(
-        Transaction(1, 150000.0, "debit", "courses", "Shoprite", "2026-05-20"),
-        Transaction(2, 4500000.0, "credit", "salaire", "Salaire Mai", "2026-05-21"),
-        Transaction(3, 50000.0, "debit", "transport", "Essence", "2026-05-22"),
-        Transaction(4, 20000.0, "credit", "remboursement", "Ami", "2026-05-25")
+    private val mockAccounts = listOf(
+        Account(1, "************4321", 4_850_000.0, "4 850 000,00 MGA", "MGA", "active", "checking"),
+        Account(2, "************9901", 1_250_000.0, "1 250 000,00 MGA", "MGA", "active", "savings")
     )
 
-    // ==========================================
-    // OPERATIONS
-    // ==========================================
-    
-    suspend fun getBalance(): Result<BalanceResponse> {
-        return if (useMockData) {
-            delay(500) // Simuler latence réseau
-            Result.success(mockBalance)
+    private val mockBalance = BalanceResponse(mockAccounts, 6_100_000.0, "6 100 000,00 MGA", "MGA")
+
+    private val mockTransactions = listOf(
+        Transaction(1, 150_000.0, "debit", "groceries", "Shoprite Ankorondrano", "TXN-DEMO-01", "2026-05-20"),
+        Transaction(2, 4_500_000.0, "credit", "salary", "Salaire Mai", "TXN-DEMO-02", "2026-05-21"),
+        Transaction(3, 50_000.0, "debit", "transport", "Shell carburant", "TXN-DEMO-03", "2026-05-22"),
+        Transaction(4, 20_000.0, "credit", "refund", "Remboursement ami", "TXN-DEMO-04", "2026-05-25"),
+        Transaction(5, 600_000.0, "debit", "transfer_out", "Virement OTP demo", "TXN-DEMO-05", "2026-05-27")
+    )
+
+    private val mockBeneficiaries = mutableListOf(
+        Beneficiary(1, "Rasoa Marie", "BNI Madagascar", "************8022", "+261342222222", "bank", true),
+        Beneficiary(2, "MVola Famille", "Telma MVola", "********0345", "+261341234567", "mvola", true)
+    )
+
+    private val mockCards = mutableListOf(
+        Card(1, "**** **** **** 2026", "2026", "05/29", false, "virtual", 5_000_000.0)
+    )
+
+    suspend fun login(email: String, password: String): Result<User> = runCatching {
+        if (useMockData) {
+            delay(400)
+            User(1, "Rakoto Jean", email, "+261341111111")
         } else {
-            try {
-                val response = apiService.getBalance()
-                if (response.isSuccessful && response.body() != null) {
-                    Result.success(response.body()!!)
-                } else {
-                    Result.failure(Exception("Erreur API : ${response.code()}"))
-                }
-            } catch (e: Exception) {
-                Result.failure(e)
-            }
+            val response = apiService.login(LoginRequest(email, password))
+            val body = response.body()
+            require(response.isSuccessful && body != null) { "Login refuse: ${response.code()}" }
+            SecurityUtil.saveAuthToken(context, body.data.token)
+            body.data.user
         }
     }
 
-    suspend fun getTransactions(): Result<List<Transaction>> {
-        return if (useMockData) {
-            delay(500) // Simuler latence réseau
-            Result.success(mockTransactions)
+    suspend fun register(name: String, email: String, phone: String, password: String): Result<User> = runCatching {
+        val request = RegisterRequest(name, email, phone, password, password)
+        if (useMockData) {
+            delay(400)
+            User(10, name, email, phone)
         } else {
-            try {
-                val response = apiService.getTransactions()
-                if (response.isSuccessful && response.body() != null) {
-                    Result.success(response.body()!!.transactions)
-                } else {
-                    Result.failure(Exception("Erreur API : ${response.code()}"))
-                }
-            } catch (e: Exception) {
-                Result.failure(e)
-            }
+            val response = apiService.register(request)
+            val body = response.body()
+            require(response.isSuccessful && body != null) { "Inscription refusee: ${response.code()}" }
+            SecurityUtil.saveAuthToken(context, body.data.token)
+            body.data.user
         }
+    }
+
+    suspend fun getBalance(): Result<BalanceResponse> = runCatching {
+        if (useMockData) {
+            delay(250)
+            mockBalance
+        } else {
+            val response = apiService.getBalance()
+            val body = response.body()
+            require(response.isSuccessful && body != null) { "Erreur balance: ${response.code()}" }
+            body.data
+        }
+    }
+
+    suspend fun getTransactions(): Result<List<Transaction>> = runCatching {
+        if (useMockData) {
+            delay(250)
+            mockTransactions
+        } else {
+            val response = apiService.getTransactions()
+            val body = response.body()
+            require(response.isSuccessful && body != null) { "Erreur transactions: ${response.code()}" }
+            body.data
+        }
+    }
+
+    suspend fun getBeneficiaries(): Result<List<Beneficiary>> = runCatching {
+        if (useMockData) mockBeneficiaries else apiService.getBeneficiaries().bodyOrThrow()
+    }
+
+    suspend fun addBeneficiary(request: BeneficiaryRequest): Result<Beneficiary> = runCatching {
+        if (useMockData) {
+            val item = Beneficiary(mockBeneficiaries.size + 1, request.name, request.bankName, "********" + request.accountNumber.takeLast(4), request.phone, request.channel, true)
+            mockBeneficiaries.add(item)
+            item
+        } else apiService.createBeneficiary(request).bodyOrThrow()
+    }
+
+    suspend fun deleteBeneficiary(id: Int): Result<Unit> = runCatching {
+        if (useMockData) {
+            mockBeneficiaries.removeAll { it.id == id }
+            Unit
+        } else apiService.deleteBeneficiary(id).bodyOrThrow()
+    }
+
+    suspend fun getCards(): Result<List<Card>> = runCatching {
+        if (useMockData) mockCards else apiService.getCards().bodyOrThrow()
+    }
+
+    suspend fun createCard(accountId: Int, limit: Double): Result<Card> = runCatching {
+        if (useMockData) {
+            val card = Card(mockCards.size + 1, "**** **** **** ${1000 + mockCards.size}", "${1000 + mockCards.size}", "05/29", false, "virtual", limit)
+            mockCards.add(card)
+            card
+        } else apiService.createCard(CreateCardRequest(accountId, limit)).bodyOrThrow()
+    }
+
+    suspend fun toggleCard(cardId: Int): Result<Card> = runCatching {
+        if (useMockData) {
+            val index = mockCards.indexOfFirst { it.id == cardId }
+            val updated = mockCards[index].copy(isBlocked = !mockCards[index].isBlocked)
+            mockCards[index] = updated
+            updated
+        } else apiService.toggleCard(cardId).bodyOrThrow()
+    }
+
+    suspend fun transfer(request: TransferRequest): Result<TransferData> = runCatching {
+        if (useMockData) {
+            delay(350)
+            val otp = request.amount >= 500_000.0
+            TransferData(otp, Transfer(99, request.amount, if (otp) "pending" else "completed", "TRF-DEMO-OTP", !otp, request.note, request.channel))
+        } else apiService.createTransfer(request).bodyOrThrow()
+    }
+
+    suspend fun verifyOtp(reference: String, otp: String): Result<Transfer> = runCatching {
+        if (useMockData) Transfer(99, 600_000.0, "completed", reference, true, "Demo OTP", "internal")
+        else apiService.verifyTransfer(VerifyOtpRequest(reference, otp)).bodyOrThrow()
+    }
+
+    suspend fun generateQr(accountId: Int, amount: Double?): Result<QrData> = runCatching {
+        if (useMockData) QrData("eyJ0eXBlIjoiYmFua19wYXltZW50IiwiZGVtbyI6dHJ1ZX0=", mapOf("account_id" to accountId, "amount" to (amount ?: 0.0)))
+        else apiService.generateQr(QrGenerateRequest(accountId, amount)).bodyOrThrow()
+    }
+
+    suspend fun scanQr(payload: String): Result<Map<String, Any>> = runCatching {
+        if (useMockData) mapOf("type" to "bank_payment", "payload" to payload, "message" to "QR code valide en mode demo")
+        else apiService.scanQr(QrScanRequest(payload)).bodyOrThrow()
+    }
+
+    suspend fun payQr(senderAccountId: Int, payload: String, amount: Double): Result<TransferData> = runCatching {
+        if (useMockData) {
+            delay(350)
+            val otp = amount >= 500_000.0
+            TransferData(otp, Transfer(100, amount, if (otp) "pending" else "completed", "QR-DEMO-PAY", !otp, "Paiement QR SCpay", "internal"))
+        } else apiService.payQr(QrPayRequest(senderAccountId, payload, amount)).bodyOrThrow()
+    }
+
+    private fun <T> retrofit2.Response<ApiEnvelope<T>>.bodyOrThrow(): T {
+        val body = body()
+        require(isSuccessful && body != null) { "Erreur API: ${code()}" }
+        return body.data
     }
 }
