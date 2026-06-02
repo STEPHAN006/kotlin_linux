@@ -10,7 +10,7 @@ class BankRepository(
     private val apiService: ApiService,
     private val context: Context
 ) {
-    var useMockData = true
+    var useMockData = false
 
     private val mockAccounts = listOf(
         Account(1, "************4321", 4_850_000.0, "4 850 000,00 MGA", "MGA", "active", "checking"),
@@ -146,8 +146,15 @@ class BankRepository(
     }
 
     suspend fun scanQr(payload: String): Result<Map<String, Any>> = runCatching {
-        if (useMockData) mapOf("type" to "bank_payment", "payload" to payload, "message" to "QR code valide en mode demo")
-        else apiService.scanQr(QrScanRequest(payload)).bodyOrThrow()
+        // Clean payload – remove extra whitespace and line breaks
+        val cleanedPayload = payload.trim()
+        // Log payload for debugging; remove in production
+        android.util.Log.d("BankRepository", "Scanning QR payload: $cleanedPayload")
+        if (useMockData) {
+            mapOf("type" to "bank_payment", "payload" to cleanedPayload, "message" to "QR code valide en mode demo")
+        } else {
+            apiService.scanQr(QrScanRequest(cleanedPayload)).bodyOrThrow()
+        }
     }
 
     suspend fun payQr(senderAccountId: Int, payload: String, amount: Double): Result<TransferData> = runCatching {

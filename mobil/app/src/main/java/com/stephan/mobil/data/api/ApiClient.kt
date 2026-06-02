@@ -11,13 +11,17 @@ import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
 
 object ApiClient {
-    private const val BASE_URL = "http://10.0.2.2:8000/api/"
+    // ⚠️ PORT 8000 requis — Laravel est lancé avec: php artisan serve --host=0.0.0.0 --port=8000
+    private const val BASE_URL = "http://192.168.209.90:8000/api/"
 
     private var retrofit: Retrofit? = null
 
+    /** Réinitialise le client (utile si l'IP change) */
+    fun reset() { retrofit = null }
+
     fun getClient(context: Context): Retrofit {
         if (retrofit == null) {
-            
+
             val loggingInterceptor = HttpLoggingInterceptor().apply {
                 level = HttpLoggingInterceptor.Level.BODY
             }
@@ -40,7 +44,6 @@ object ApiClient {
                 .readTimeout(30, TimeUnit.SECONDS)
                 .build()
 
-            // Configuration de Retrofit
             retrofit = Retrofit.Builder()
                 .baseUrl(BASE_URL)
                 .client(okHttpClient)
