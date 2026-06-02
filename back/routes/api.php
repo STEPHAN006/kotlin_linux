@@ -4,6 +4,11 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\AccountController;
 use App\Http\Controllers\Api\TransactionController;
 use App\Http\Controllers\Api\AdminController;
+use App\Http\Controllers\Api\BeneficiaryController;
+use App\Http\Controllers\Api\CardController;
+use App\Http\Controllers\Api\QrController;
+use App\Http\Controllers\Api\StatementController;
+use App\Http\Controllers\Api\TransferController;
 use App\Http\Middleware\EnsureUserIsAdmin;
 use App\Http\Middleware\ForceJsonResponse;
 use Illuminate\Support\Facades\Route;
@@ -60,6 +65,25 @@ Route::middleware(ForceJsonResponse::class)->group(function () {
         // Transactions
         Route::get('/transactions', [TransactionController::class, 'index']);
 
+        // Transfers, OTP validation and QR payment helpers
+        Route::get('/transfers', [TransferController::class, 'index']);
+        Route::post('/transfers', [TransferController::class, 'store']);
+        Route::post('/transfers/verify', [TransferController::class, 'verify']);
+        Route::post('/qr/generate', [QrController::class, 'generate']);
+        Route::post('/qr/scan', [QrController::class, 'scan']);
+        Route::post('/qr/pay', [QrController::class, 'pay']);
+
+        // Beneficiaries
+        Route::get('/beneficiaries', [BeneficiaryController::class, 'index']);
+        Route::post('/beneficiaries', [BeneficiaryController::class, 'store']);
+        Route::delete('/beneficiaries/{beneficiary}', [BeneficiaryController::class, 'destroy']);
+
+        // Virtual cards and monthly statements
+        Route::get('/cards', [CardController::class, 'index']);
+        Route::post('/cards', [CardController::class, 'store']);
+        Route::post('/cards/{card}/toggle', [CardController::class, 'toggle']);
+        Route::get('/statements/monthly', [StatementController::class, 'monthly']);
+
         /*
         |------------------------------------------------------------------
         | Admin Routes (Admin role required)
@@ -73,22 +97,5 @@ Route::middleware(ForceJsonResponse::class)->group(function () {
                 Route::get('/fraud-alerts', [AdminController::class, 'fraudAlerts']);
             });
 
-        /*
-        |------------------------------------------------------------------
-        | Future Endpoints (Placeholder structure)
-        |------------------------------------------------------------------
-        |
-        | These route groups are prepared for future feature integration:
-        |
-        | - POST /api/transfers          -> Initiate transfer
-        | - POST /api/transfers/verify    -> OTP verification
-        | - POST /api/qr/generate        -> Generate QR payment code
-        | - POST /api/qr/scan            -> Process QR payment
-        | - POST /api/mobile-money/mvola  -> MVola integration
-        | - POST /api/mobile-money/airtel -> Airtel Money integration
-        | - POST /api/mobile-money/orange -> Orange Money integration
-        | - POST /api/biometric/verify    -> Biometric authentication
-        |
-        */
     });
 });
