@@ -144,6 +144,10 @@ class BankViewModel(private val repository: BankRepository) : ViewModel() {
     }
 
     fun scanQr(payload: String) = viewModelScope.launch {
+        if (payload.isBlank()) {
+            _uiState.value = _uiState.value.copy(error = "QR payload vide ou invalide")
+            return@launch
+        }
         repository.scanQr(payload).fold(
             onSuccess = { _uiState.value = _uiState.value.copy(message = "QR valide: pret pour paiement") },
             onFailure = { _uiState.value = _uiState.value.copy(error = it.message) }
