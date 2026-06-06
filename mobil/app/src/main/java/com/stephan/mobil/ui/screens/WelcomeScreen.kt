@@ -34,7 +34,7 @@ import androidx.core.view.WindowCompat
 import com.stephan.mobil.R
 import com.stephan.mobil.ui.theme.DarkSlate
 import com.stephan.mobil.ui.theme.LightSlate
-import com.stephan.mobil.ui.theme.NeonEmerald
+import com.stephan.mobil.ui.theme.BrandPrimary
 import com.stephan.mobil.ui.theme.ObsidianBlack
 import com.stephan.mobil.ui.theme.PremiumWhite
 
@@ -52,15 +52,13 @@ fun WelcomeScreen(
     DisposableEffect(view) {
         val window = (view.context as Activity).window
         WindowCompat.setDecorFitsSystemWindows(window, false)
-        window.statusBarColor = Color.Transparent.toArgb()
-        window.navigationBarColor = Color.Transparent.toArgb()
-        WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = false
-
-        onDispose {
-            WindowCompat.setDecorFitsSystemWindows(window, true)
-            window.statusBarColor = ObsidianBlack.toArgb()
-            window.navigationBarColor = ObsidianBlack.toArgb()
+        window.statusBarColor = android.graphics.Color.TRANSPARENT
+        window.navigationBarColor = android.graphics.Color.TRANSPARENT
+        WindowCompat.getInsetsController(window, view).apply {
+            isAppearanceLightStatusBars = false
+            isAppearanceLightNavigationBars = false
         }
+        onDispose { }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -102,7 +100,7 @@ fun WelcomeScreen(
                 .background(
                     Brush.radialGradient(
                         colors = listOf(
-                            NeonEmerald.copy(alpha = 0.12f),
+                            BrandPrimary.copy(alpha = 0.12f),
                             Color.Transparent,
                             Color.Black.copy(alpha = 0.42f)
                         ),
@@ -340,9 +338,9 @@ fun LoginOverlaySheet(
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedTextColor = Color.White,
                             unfocusedTextColor = Color.White,
-                            focusedBorderColor = NeonEmerald.copy(alpha = 0.8f),
+                            focusedBorderColor = BrandPrimary.copy(alpha = 0.8f),
                             unfocusedBorderColor = Color.White.copy(alpha = 0.08f),
-                            cursorColor = NeonEmerald
+                            cursorColor = BrandPrimary
                         ),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                         shape = RoundedCornerShape(14.dp),
@@ -359,7 +357,7 @@ fun LoginOverlaySheet(
                         .fillMaxWidth()
                         .height(52.dp),
                     shape = RoundedCornerShape(26.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = NeonEmerald)
+                    colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary)
                 ) {
                     if (isLoading) {
                         CircularProgressIndicator(color = ObsidianBlack, modifier = Modifier.size(24.dp))
@@ -490,9 +488,9 @@ fun RegisterOverlaySheet(
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedTextColor = Color.White,
                             unfocusedTextColor = Color.White,
-                            focusedBorderColor = NeonEmerald.copy(alpha = 0.8f),
+                            focusedBorderColor = BrandPrimary.copy(alpha = 0.8f),
                             unfocusedBorderColor = Color.White.copy(alpha = 0.08f),
-                            cursorColor = NeonEmerald
+                            cursorColor = BrandPrimary
                         ),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                         shape = RoundedCornerShape(14.dp),
@@ -509,7 +507,7 @@ fun RegisterOverlaySheet(
                         .fillMaxWidth()
                         .height(52.dp),
                     shape = RoundedCornerShape(26.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = NeonEmerald)
+                    colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary)
                 ) {
                     if (isLoading) {
                         CircularProgressIndicator(color = ObsidianBlack, modifier = Modifier.size(24.dp))

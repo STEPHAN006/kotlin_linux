@@ -88,17 +88,74 @@ class TransactionRepository
     }
 
     /**
-     * Get transactions flagged as suspicious (large amounts or unusual patterns).
-     * This is a placeholder for future fraud detection integration.
+     * Get transactions flagged as suspicious:
+     * – Large amounts (> 10 000 000 MGA)
+     * – Same amount repeated ≥ 3 times for the same account in the last 24 h
+     * – Transactions made between midnight and 05:00 (atypical hours)
      */
     public function getSuspiciousTransactions(int $limit = 10): Collection
     {
-        // Flag transactions over 10,000,000 MGA or multiple rapid transactions
-        return Transaction::with('account.user')
+        $largeAmount = Transaction::with('account.user')
             ->where('amount', '>', 10000000)
             ->orderBy('created_at', 'desc')
             ->limit($limit)
             ->get();
+
+        // Same amount repeated ≥ 3 times per account in last 24 h
+        $repeatedIds = Transaction::selectRaw('id')
+            ->whereIn('id', function ($sub) {
+                $sub->selectRaw('MIN(id)')
+                    ->from('transactions')
+                    ->where('created_at', '>=', now()->subHours(24))
+                    ->groupBy('account_id', 'amount')
+                    ->havingRaw('COUNT(*) >= 3');
+            })
+            ->pluck('id');
+
+        $repeated = Transaction::with('account.user')
+            ->whereIn('id', $repeatedIds)
+            ->orderBy('created_at', 'desc')
+            ->limit($limit)
+            ->get();
+
+        // Off-hours transactions (00:00 – 05:00) — compatible SQLite + MySQL
+        $isMySQL = config('database.default') !== 'sqlite';
+        $offHours = Transaction::with('account.user')
+            ->when($isMySQL, fn($q) => $q->whereRaw('HOUR(created_at) < 5'),
+                             fn($q) => $q->whereRaw("strftime('%H', created_at) < '05'"))
+            ->orderBy('created_at', 'desc')
+            ->limit($limit)
+            ->get();
+
+        return $largeAmount->merge($repeated)->merge($offHours)
+            ->unique('id')
+            ->sortByDesc('created_at')
+            ->take($limit)
+            ->values();
+    }
+
+    /**
+     * Detect if an account has suspicious activity and return true if it should be frozen.
+     * Triggers when: ≥ 5 debits in 10 minutes OR ≥ 3 identical amounts in 1 hour.
+     */
+    public function isSuspicious(int $accountId): bool
+    {
+        $rapidDebits = Transaction::where('account_id', $accountId)
+            ->where('type', 'debit')
+            ->where('created_at', '>=', now()->subMinutes(10))
+            ->count();
+
+        if ($rapidDebits >= 5) {
+            return true;
+        }
+
+        $repeatedAmount = Transaction::where('account_id', $accountId)
+            ->where('created_at', '>=', now()->subHour())
+            ->groupBy('amount')
+            ->havingRaw('COUNT(*) >= 3')
+            ->count();
+
+        return $repeatedAmount > 0;
     }
 
     /**

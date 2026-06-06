@@ -82,8 +82,16 @@ class QrController extends Controller
 
     private function decodePayload(string $payload): array
     {
-        $decoded = json_decode(base64_decode($payload), true);
-        abort_if(!is_array($decoded) || empty($decoded['account_id']), 422, 'QR code invalide.');
+        // Normalise Base64: support URL-safe variant and strip whitespace
+        $normalized = str_replace(['-', '_', ' ', "\n", "\r"], ['+', '/', '', '', ''], trim($payload));
+        // Add padding if needed
+        $padded = str_pad($normalized, strlen($normalized) + (4 - strlen($normalized) % 4) % 4, '=');
+
+        $decoded = json_decode(base64_decode($padded), true);
+
+        if (!is_array($decoded) || empty($decoded['account_id'])) {
+            abort(422, 'QR code invalide ou expiré. Veuillez régénérer le code.');
+        }
 
         return $decoded;
     }

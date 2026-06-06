@@ -21,13 +21,24 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        create("release") {
+            storeFile = file("scpay.keystore")
+            storePassword = "scpay2026"
+            keyAlias = "scpay_key"
+            keyPassword = "scpay2026"
+        }
+    }
+
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = signingConfigs.getByName("release")
         }
     }
     compileOptions {
@@ -62,6 +73,13 @@ dependencies {
     // ViewModel & Navigation Compose
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.2")
     implementation("androidx.navigation:navigation-compose:2.7.7")
+
+    // WorkManager pour les notifications push en background
+    implementation("androidx.work:work-runtime-ktx:2.9.1")
+    implementation("androidx.core:core-ktx:1.13.1")
+
+    // MPAndroidChart — graphiques dépenses par catégorie
+    implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
     implementation("androidx.biometric:biometric:1.2.0-alpha05")
     implementation("androidx.compose.material:material-icons-extended")
     implementation("com.google.zxing:core:3.5.3")

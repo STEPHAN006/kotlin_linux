@@ -125,3 +125,27 @@ data class QrPayRequest(
     val amount: Double
 )
 data class QrData(val payload: String, val display: Map<String, Any>?)
+
+data class AppNotification(
+    val id: Int,
+    val title: String,
+    val body: String,
+    val read: Boolean,
+    @SerializedName("created_at") val createdAt: String
+)
+
+data class SupportMessage(
+    val id: Int,
+    val sender: String,
+    val message: String,
+    @SerializedName("created_at") val createdAt: String
+)
+
+data class SupportTicket(
+    val id: Int,
+    val subject: String,
+    val status: String,
+    val messages: List<SupportMessage>
+)
+
+data class SendMessageRequest(val message: String)

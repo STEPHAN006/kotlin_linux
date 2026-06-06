@@ -1,6 +1,9 @@
 package com.stephan.mobil.ui.screens
+import com.stephan.mobil.ui.theme.*
 
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
@@ -14,6 +17,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -22,7 +26,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -30,19 +37,24 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AddCircleOutline
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.MailOutline
 import androidx.compose.material.icons.filled.RemoveRedEye
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.ViewModule
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -65,29 +77,139 @@ import com.stephan.mobil.ui.viewmodel.BankUiState
 import com.stephan.mobil.ui.viewmodel.BankViewModel
 import kotlin.math.absoluteValue
 
-private val CardPageBg = Color.White
-private val CardInk = Color(0xFF15171B)
-private val CardMuted = Color(0xFF8A8E96)
-private val CardSoft = Color(0xFFF4F5F7)
+private val CardPageBg = BgBase
+private val CardInk = TextPrimary
+private val CardMuted = TextSecondary
+private val CardSoft = BgSurfaceHigh
 
 @Composable
 fun CardsScreen(state: BankUiState, vm: BankViewModel, darkMode: Boolean = false) {
     var showChooseCard by remember { mutableStateOf(false) }
+    var showSettings by remember { mutableStateOf(false) }
+    var settingsCardId by remember { mutableIntStateOf(0) }
 
-    if (showChooseCard) {
-        ChooseCardScreen(
+    val selectedCard = state.cards.firstOrNull { it.id == settingsCardId }
+        ?: state.cards.firstOrNull()
+
+    when {
+        showSettings && selectedCard != null -> CardSettingsPage(
+            card = selectedCard,
+            accountId = state.balance.accounts.firstOrNull()?.id ?: 1,
+            vm = vm,
+            darkMode = darkMode,
+            onBack = { showSettings = false }
+        )
+        showChooseCard -> ChooseCardScreen(
             state = state,
             vm = vm,
             darkMode = darkMode,
             onBack = { showChooseCard = false }
         )
-    } else {
-        CardsMainContent(
+        else -> CardsMainContent(
             state = state,
             vm = vm,
             darkMode = darkMode,
-            onAddCard = { showChooseCard = true }
+            onAddCard = { showChooseCard = true },
+            onSettings = { cardId -> settingsCardId = cardId; showSettings = true }
         )
+    }
+}
+
+@Composable
+private fun CardSettingsPage(
+    card: Card,
+    accountId: Int,
+    vm: BankViewModel,
+    darkMode: Boolean,
+    onBack: () -> Unit
+) {
+    val ink = CardInk
+    val bg = BgBase
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(bg)
+            .padding(24.dp)
+    ) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onBack) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = ink)
+            }
+            Text("Paramètres de la carte", color = ink, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+        }
+
+        Spacer(Modifier.height(24.dp))
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(BgSurfaceElevated)
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("Carte ••${card.lastFour}", color = ink, fontWeight = FontWeight.SemiBold)
+                Text(
+                    if (card.isBlocked) "Bloquée" else "Active",
+                    color = if (card.isBlocked) SemanticDanger else SemanticSuccess,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+            Divider(color = BgSurfaceTop)
+            SettingsRow("Type", card.type.replaceFirstChar { it.uppercase() }, ink)
+            SettingsRow("Expiration", card.expiryDate.ifBlank { "N/A" }, ink)
+            SettingsRow("Limite journalière", "%,.0f MGA".format(card.dailyLimit).replace(",", " "), ink)
+            SettingsRow("Statut", if (card.isBlocked) "🔴 Bloquée" else "🟢 Active", ink)
+        }
+
+        Spacer(Modifier.height(28.dp))
+        Text("Actions", color = CardMuted, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+        Spacer(Modifier.height(12.dp))
+
+        if (card.id != 0) {
+            SettingsActionButton(
+                label = if (card.isBlocked) "Débloquer la carte" else "Bloquer la carte",
+                icon = if (card.isBlocked) Icons.Default.LockOpen else Icons.Default.Lock,
+                color = if (card.isBlocked) SemanticSuccess else BrandPrimary,
+                darkMode = darkMode
+            ) { vm.toggleCard(card.id); onBack() }
+
+            Spacer(Modifier.height(12.dp))
+
+            SettingsActionButton(
+                label = "Augmenter la limite (+500 000 MGA)",
+                icon = Icons.Default.Tune,
+                color = Color(0xFF5B8DEF),
+                darkMode = darkMode
+            ) { vm.createCard(accountId, card.dailyLimit + 500_000.0); onBack() }
+        }
+    }
+}
+
+@Composable
+private fun SettingsRow(label: String, value: String, ink: Color) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(label, color = CardMuted, fontSize = 14.sp)
+        Text(value, color = ink, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+    }
+}
+
+@Composable
+private fun SettingsActionButton(label: String, icon: ImageVector, color: Color, darkMode: Boolean, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(color.copy(alpha = 0.1f))
+            .clickable(onClick = onClick)
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(icon, null, tint = color, modifier = Modifier.size(22.dp))
+        Spacer(Modifier.width(14.dp))
+        Text(label, color = color, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
     }
 }
 
@@ -107,7 +229,7 @@ private fun ChooseCardScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(if (darkMode) Color(0xFF101114) else Color.White)
+            .background(BgBase)
             .padding(24.dp)
     ) {
         // Header
@@ -119,7 +241,7 @@ private fun ChooseCardScreen(
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "Retour",
-                    tint = if (darkMode) Color.White else CardInk
+                    tint = CardInk
                 )
             }
         }
@@ -129,7 +251,7 @@ private fun ChooseCardScreen(
         // Title
         Text(
             text = "Choisir une carte",
-            color = if (darkMode) Color.White else CardInk,
+            color = CardInk,
             fontSize = 30.sp,
             fontWeight = FontWeight.Bold
         )
@@ -141,7 +263,7 @@ private fun ChooseCardScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(12.dp))
-                .background(if (darkMode) Color(0xFF1F2023) else Color(0xFFF1F2F5))
+                .background(BgSurfaceElevated)
                 .padding(4.dp),
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
@@ -151,7 +273,7 @@ private fun ChooseCardScreen(
                     .clip(RoundedCornerShape(8.dp))
                     .background(
                         if (isVirtualSelected) {
-                            if (darkMode) Color(0xFF2F3035) else Color.White
+                            BgSurfaceHigh
                         } else Color.Transparent
                     )
                     .clickable { isVirtualSelected = true }
@@ -160,7 +282,7 @@ private fun ChooseCardScreen(
             ) {
                 Text(
                     "Carte virtuelle",
-                    color = if (darkMode) Color.White else Color.Black,
+                    color = Color.White,
                     fontWeight = if (isVirtualSelected) FontWeight.Bold else FontWeight.Normal,
                     fontSize = 15.sp
                 )
@@ -171,7 +293,7 @@ private fun ChooseCardScreen(
                     .clip(RoundedCornerShape(8.dp))
                     .background(
                         if (!isVirtualSelected) {
-                            if (darkMode) Color(0xFF2F3035) else Color.White
+                            BgSurfaceHigh
                         } else Color.Transparent
                     )
                     .clickable { isVirtualSelected = false }
@@ -180,20 +302,20 @@ private fun ChooseCardScreen(
             ) {
                 Text(
                     "Carte physique",
-                    color = if (darkMode) Color.White else Color.Black,
+                    color = Color.White,
                     fontWeight = if (!isVirtualSelected) FontWeight.Bold else FontWeight.Normal,
                     fontSize = 15.sp
                 )
             }
         }
 
-        Spacer(Modifier.weight(0.1f))
+        Spacer(Modifier.height(16.dp))
 
-        // Vertical Card Preview
+        // Vertical Card Preview — hauteur fixe pour éviter le débordement
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(1f),
+                .height(320.dp),
             contentAlignment = Alignment.Center
         ) {
             VerticalCardPreview(
@@ -202,7 +324,7 @@ private fun ChooseCardScreen(
             )
         }
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(20.dp))
 
         // Text Info below card
         val cardTitle = when (selectedDesign) {
@@ -216,18 +338,18 @@ private fun ChooseCardScreen(
         ) {
             Text(
                 text = cardTitle,
-                color = if (darkMode) Color.White else CardInk,
+                color = CardInk,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center
             )
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(6.dp))
             Text(
-                text = "Compatible avec Apple Pay et Google Pay. Accepté par plus de 130 millions de commerçants dans le monde entier.",
+                text = "Compatible avec Apple Pay et Google Pay.",
                 color = CardMuted,
-                fontSize = 14.sp,
+                fontSize = 13.sp,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.padding(horizontal = 8.dp)
+                modifier = Modifier.padding(horizontal = 16.dp)
             )
         }
 
@@ -250,7 +372,7 @@ private fun ChooseCardScreen(
                         .clip(CircleShape)
                         .background(
                             if (isSelected) {
-                                if (darkMode) Color.White.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.1f)
+                                Color.White.copy(alpha = 0.15f)
                             } else Color.Transparent
                         )
                         .clickable { selectedDesign = index }
@@ -296,8 +418,8 @@ private fun ChooseCardScreen(
                 .height(56.dp),
             shape = RoundedCornerShape(14.dp),
             colors = ButtonDefaults.buttonColors(
-                containerColor = if (darkMode) Color.White else Color(0xFF17181C),
-                contentColor = if (darkMode) Color.Black else Color.White
+                containerColor = BgSurfaceHigh,
+                contentColor = Color.White
             )
         ) {
             Text("Demande de carte · 10 USD", fontSize = 16.sp, fontWeight = FontWeight.Bold)
@@ -310,11 +432,11 @@ private fun VerticalCardPreview(designIndex: Int, isVirtual: Boolean) {
     val brush = getCardBrush(designIndex)
     Box(
         modifier = Modifier
-            .width(220.dp)
-            .height(350.dp)
+            .fillMaxWidth(0.72f)
+            .aspectRatio(0.65f)
             .clip(RoundedCornerShape(18.dp))
             .background(brush)
-            .padding(24.dp)
+            .padding(20.dp)
     ) {
         // RedotPay text vertically rotated on the right side
         Text(
@@ -406,7 +528,8 @@ private fun CardsMainContent(
     state: BankUiState,
     vm: BankViewModel,
     darkMode: Boolean,
-    onAddCard: () -> Unit
+    onAddCard: () -> Unit,
+    onSettings: (Int) -> Unit = {}
 ) {
     val accountId = state.balance.accounts.firstOrNull()?.id ?: 1
     val context = LocalContext.current
@@ -427,6 +550,8 @@ private fun CardsMainContent(
     }
 
     var selectedCardIndex by remember { mutableStateOf(0) }
+    var revealedCardId by remember { mutableStateOf<Int?>(null) }
+    var showWalletDialog by remember { mutableStateOf(false) }
 
     // Keep active card selection in bounds
     LaunchedEffect(cards.size) {
@@ -437,11 +562,40 @@ private fun CardsMainContent(
 
     val card = cards.getOrNull(selectedCardIndex) ?: cards.first()
     val designIndex = getCardDesign(card, sharedPrefs)
+    val isRevealed = revealedCardId == card.id
+
+    // Dialog: Google Wallet
+    if (showWalletDialog) {
+        AlertDialog(
+            onDismissRequest = { showWalletDialog = false },
+            title = { Text("Google Wallet", fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Ajouter votre carte SCpay •••• ${card.lastFour} à Google Wallet ?")
+                    Spacer(Modifier.height(4.dp))
+                    Text("Cette fonctionnalité nécessite une validation bancaire supplémentaire. Contactez votre conseiller SCpay pour activer le paiement NFC.", color = TextSecondary, fontSize = 13.sp)
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://pay.google.com"))
+                        context.startActivity(intent)
+                        showWalletDialog = false
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4285F4))
+                ) { Text("Ouvrir Google Pay") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showWalletDialog = false }) { Text("Annuler") }
+            }
+        )
+    }
 
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(if (darkMode) Color(0xFF101114) else CardPageBg)
+            .background(BgBase)
             .padding(horizontal = 24.dp),
         verticalArrangement = Arrangement.spacedBy(26.dp)
     ) {
@@ -454,16 +608,20 @@ private fun CardsMainContent(
             ) {
                 Text(
                     text = "Cartes",
-                    color = if (darkMode) Color.White else CardInk,
+                    color = CardInk,
                     fontSize = 34.sp,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.weight(1f)
                 )
-                IconButton(onClick = { vm.notify("Releves mensuels disponibles via l'API /statements/monthly") }) {
+                IconButton(onClick = {
+                    val url = "http://192.168.88.239:8000/api/statements/monthly?account_id=${state.balance.accounts.firstOrNull()?.id ?: 1}"
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                    context.startActivity(intent)
+                }) {
                     Icon(
                         Icons.Default.MailOutline,
                         null,
-                        tint = if (darkMode) Color.White else CardInk,
+                        tint = CardInk,
                         modifier = Modifier.size(26.dp)
                     )
                 }
@@ -471,61 +629,86 @@ private fun CardsMainContent(
                     Icon(
                         Icons.Default.AddCircleOutline,
                         null,
-                        tint = if (darkMode) Color.White else CardInk,
+                        tint = CardInk,
                         modifier = Modifier.size(28.dp)
                     )
                 }
             }
         }
 
-        // Horizontal Carousel of Cards
+        // Horizontal Pager with snap-to-center
         item {
+            val pagerState = rememberPagerState(
+                initialPage = selectedCardIndex.coerceIn(0, cards.size - 1),
+                pageCount = { cards.size }
+            )
+
+            // Keep selectedCardIndex in sync with pager
+            LaunchedEffect(pagerState.currentPage) {
+                selectedCardIndex = pagerState.currentPage
+            }
+            // If selectedCardIndex changes externally (e.g. initial load), animate pager
+            LaunchedEffect(selectedCardIndex) {
+                if (pagerState.currentPage != selectedCardIndex) {
+                    pagerState.animateScrollToPage(selectedCardIndex.coerceIn(0, cards.size - 1))
+                }
+            }
+
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                LazyRow(
+                HorizontalPager(
+                    state = pagerState,
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    contentPadding = PaddingValues(horizontal = 4.dp)
-                ) {
-                    itemsIndexed(cards) { index, c ->
-                        val isSelected = index == selectedCardIndex
-                        Box(
-                            modifier = Modifier
-                                .width(300.dp)
-                                .border(
-                                    width = if (isSelected) 2.dp else 0.dp,
-                                    color = if (isSelected) Color(0xFFD92C55) else Color.Transparent,
-                                    shape = RoundedCornerShape(16.dp)
-                                )
-                                .padding(4.dp)
-                                .clickable { selectedCardIndex = index }
-                        ) {
-                            FlippableScpayCard(
-                                card = c,
-                                userName = state.user?.name ?: "AROVANA",
-                                designIndex = getCardDesign(c, sharedPrefs)
-                            )
-                        }
+                    contentPadding = PaddingValues(horizontal = 36.dp),
+                    pageSpacing = 16.dp,
+                ) { page ->
+                    val c = cards[page]
+                    val pageOffset = (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
+                    val scale by animateFloatAsState(
+                        targetValue = if (pageOffset == 0f) 1f else 0.88f,
+                        animationSpec = spring(stiffness = 300f),
+                        label = "cardScale_$page"
+                    )
+                    Box(
+                        modifier = Modifier
+                            .graphicsLayer {
+                                scaleX = scale
+                                scaleY = scale
+                                alpha = if (pageOffset.absoluteValue > 0.5f) 0.6f else 1f
+                            }
+                    ) {
+                        FlippableScpayCard(
+                            card = c,
+                            userName = state.user?.name ?: "AROVANA",
+                            designIndex = getCardDesign(c, sharedPrefs),
+                            revealed = revealedCardId == c.id
+                        )
                     }
                 }
 
                 if (cards.size > 1) {
-                    Spacer(Modifier.height(12.dp))
+                    Spacer(Modifier.height(14.dp))
                     Row(
                         horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         cards.forEachIndexed { index, _ ->
+                            val isActive = index == pagerState.currentPage
+                            val dotWidth by animateFloatAsState(
+                                targetValue = if (isActive) 22f else 8f,
+                                animationSpec = spring(stiffness = 400f),
+                                label = "dot_$index"
+                            )
                             Box(
                                 modifier = Modifier
-                                    .padding(horizontal = 4.dp)
-                                    .size(8.dp)
+                                    .padding(horizontal = 3.dp)
+                                    .size(width = dotWidth.dp, height = 8.dp)
                                     .clip(CircleShape)
                                     .background(
-                                        if (index == selectedCardIndex) Color(0xFFD92C55)
-                                        else CardMuted.copy(alpha = 0.4f)
+                                        if (isActive) BrandPrimary
+                                        else CardMuted.copy(alpha = 0.35f)
                                     )
                             )
                         }
@@ -536,18 +719,20 @@ private fun CardsMainContent(
 
         item {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                CardAction("Voir", Icons.Default.RemoveRedEye) {
-                    vm.notify("Touchez la carte pour afficher le verso")
-                }
-                CardAction("Bloquer", Icons.Default.Lock, onClick = {
-                    if (card.id != 0) vm.toggleCard(card.id)
-                })
+                CardAction(
+                    label = if (isRevealed) "Masquer" else "Voir",
+                    icon = Icons.Default.RemoveRedEye
+                ) { revealedCardId = if (isRevealed) null else card.id }
+                CardAction(
+                    label = if (card.isBlocked) "Débloquer" else "Bloquer",
+                    icon = if (card.isBlocked) Icons.Default.LockOpen else Icons.Default.Lock,
+                    onClick = { if (card.id != 0) vm.toggleCard(card.id) }
+                )
                 CardAction("Limite", Icons.Default.Tune) {
-                    vm.createCard(accountId, card.dailyLimit + 500_000.0)
+                    if (card.id != 0) vm.createCard(accountId, card.dailyLimit + 500_000.0)
+                    else vm.notify("Créez une carte pour gérer la limite")
                 }
-                CardAction("Paramètre", Icons.Default.Settings) {
-                    vm.notify("Parametres carte: type = ${card.type}, limite = ${card.dailyLimit.toLong()} MGA")
-                }
+                CardAction("Paramètre", Icons.Default.Settings) { onSettings(card.id) }
             }
         }
 
@@ -557,6 +742,7 @@ private fun CardsMainContent(
                     modifier = Modifier
                         .clip(RoundedCornerShape(28.dp))
                         .background(CardInk)
+                        .clickable { showWalletDialog = true }
                         .padding(horizontal = 22.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -583,7 +769,7 @@ private fun CardsMainContent(
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = "Transactions",
-                    color = if (darkMode) Color.White else CardInk,
+                    color = CardInk,
                     fontSize = 22.sp,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.weight(1f)
@@ -594,10 +780,21 @@ private fun CardsMainContent(
             }
         }
 
-        item {
-            Text("mer., avr. 15", color = CardMuted, fontSize = 17.sp)
-            Spacer(Modifier.height(24.dp))
-            TransactionLine("CLAUDE.AI SUBSCRIPTION", "-20,00 USD", "Refusé", false, "2026-04-15 11:56:31")
+        if (state.transactions.isEmpty()) {
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 24.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("Aucune transaction récente", color = CardMuted, fontSize = 14.sp)
+                }
+            }
+        } else {
+            items(state.transactions.take(5)) { txn ->
+                PremiumTransactionRow(txn)
+            }
         }
 
         item { Spacer(Modifier.height(22.dp)) }
@@ -605,7 +802,7 @@ private fun CardsMainContent(
 }
 
 @Composable
-private fun FlippableScpayCard(card: Card, userName: String, designIndex: Int) {
+private fun FlippableScpayCard(card: Card, userName: String, designIndex: Int, revealed: Boolean = false) {
     var flipped by remember { mutableStateOf(false) }
     val rotation by animateFloatAsState(
         targetValue = if (flipped) 180f else 0f,
@@ -625,16 +822,24 @@ private fun FlippableScpayCard(card: Card, userName: String, designIndex: Int) {
             .clickable { flipped = !flipped }
     ) {
         if (showBack) {
-            CardBack(card, designIndex, Modifier.graphicsLayer { rotationY = 180f })
+            CardBack(card, designIndex, revealed, Modifier.graphicsLayer { rotationY = 180f })
         } else {
-            CardFront(card, userName, designIndex)
+            CardFront(card, userName, designIndex, revealed = revealed)
         }
     }
 }
 
 @Composable
-private fun CardFront(card: Card, userName: String, designIndex: Int, modifier: Modifier = Modifier) {
+private fun CardFront(card: Card, userName: String, designIndex: Int, modifier: Modifier = Modifier, revealed: Boolean = false) {
     val brush = getCardBrush(designIndex)
+    // Generate deterministic partial card number for revealed mode
+    val fakePart1 = (4500 + (card.id * 37) % 99).toString()
+    val fakePart2 = ((card.id * 1234 + 5678) % 10000).toString().padStart(4, '0')
+    val fakePart3 = ((card.id * 9876 + 1234) % 10000).toString().padStart(4, '0')
+    val cardNumber = if (revealed) "$fakePart1 $fakePart2 $fakePart3 ${card.lastFour}"
+                     else "•••• •••• •••• ${card.lastFour}"
+    val expiryDisplay = if (revealed && card.expiryDate.isNotBlank()) card.expiryDate else "••/••"
+
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -642,18 +847,18 @@ private fun CardFront(card: Card, userName: String, designIndex: Int, modifier: 
             .background(brush)
             .padding(24.dp)
     ) {
-        Text("USD", color = Color.White, fontSize = 17.sp, modifier = Modifier.align(Alignment.TopEnd))
+        Text("MGA", color = Color.White, fontSize = 17.sp, modifier = Modifier.align(Alignment.TopEnd))
         Column(Modifier.align(Alignment.BottomStart)) {
-            Text("•••• •••• •••• ${card.lastFour}", color = Color.White, fontSize = 19.sp, fontWeight = FontWeight.SemiBold)
+            Text(cardNumber, color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.height(28.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(44.dp)) {
                 Column {
-                    Text("Valide jusqu'au", color = Color.White.copy(alpha = 0.82f), fontSize = 14.sp)
-                    Text(card.expiryDate.ifBlank { "••••" }, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    Text("Valide jusqu'au", color = Color.White.copy(alpha = 0.82f), fontSize = 13.sp)
+                    Text(expiryDisplay, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 }
                 Column {
-                    Text("CVV", color = Color.White.copy(alpha = 0.82f), fontSize = 14.sp)
-                    Text("•••", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    Text("CVV", color = Color.White.copy(alpha = 0.82f), fontSize = 13.sp)
+                    Text("•••", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -694,7 +899,7 @@ private fun CardFront(card: Card, userName: String, designIndex: Int, modifier: 
 }
 
 @Composable
-private fun CardBack(card: Card, designIndex: Int, modifier: Modifier = Modifier) {
+private fun CardBack(card: Card, designIndex: Int, revealed: Boolean = false, modifier: Modifier = Modifier) {
     val brush = getCardBrush(designIndex)
     Box(
         modifier = modifier
@@ -705,7 +910,8 @@ private fun CardBack(card: Card, designIndex: Int, modifier: Modifier = Modifier
     ) {
         Text("SCpay", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold, modifier = Modifier.align(Alignment.TopStart))
         Column(Modifier.align(Alignment.BottomStart)) {
-            Text("•• ${card.lastFour}", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+            Text("Limite : %,.0f MGA".format(card.dailyLimit).replace(",", " "), color = Color.White.copy(0.7f), fontSize = 12.sp)
+            Text(if (revealed) card.expiryDate.ifBlank { "N/A" } else "Expiration : ••/••", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
         }
         Text("VISA", color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Black, modifier = Modifier.align(Alignment.BottomEnd))
     }

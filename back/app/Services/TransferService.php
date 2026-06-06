@@ -5,6 +5,8 @@ namespace App\Services;
 use App\Models\Account;
 use App\Models\Transaction;
 use App\Models\Transfer;
+use App\Models\UserNotification;
+use App\Repositories\TransactionRepository;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -12,7 +14,10 @@ use Illuminate\Validation\ValidationException;
 
 class TransferService
 {
-    public function __construct(protected AuditService $auditService) {}
+    public function __construct(
+        protected AuditService $auditService,
+        protected TransactionRepository $txnRepo
+    ) {}
 
     public function initiate(array $data, int $userId): array
     {
@@ -128,6 +133,30 @@ class TransferService
                 'receiver_account_id' => $receiver->id,
                 'otp_verified' => $otpVerified,
             ]);
+
+            $formattedAmount = number_format((float) $transfer->amount, 0, ',', ' ') . ' MGA';
+            UserNotification::create([
+                'user_id' => $sender->user_id,
+                'title'   => 'Virement envoyé — ' . $formattedAmount,
+                'body'    => 'Votre virement de ' . $formattedAmount . ' a été effectué avec succès. Réf: ' . $transfer->reference,
+            ]);
+            if ($receiver->user_id !== $sender->user_id) {
+                UserNotification::create([
+                    'user_id' => $receiver->user_id,
+                    'title'   => 'Virement reçu — ' . $formattedAmount,
+                    'body'    => 'Vous avez reçu un virement de ' . $formattedAmount . '. Réf: ' . $transfer->reference,
+                ]);
+            }
+
+            // Auto-freeze account if suspicious activity is detected after the transfer
+            if ($this->txnRepo->isSuspicious($sender->id)) {
+                $sender->update(['status' => 'frozen']);
+                $this->auditService->log($sender->user_id, 'account.frozen', [
+                    'account_id' => $sender->id,
+                    'reason' => 'Activité suspecte détectée (transactions répétées ou fréquence anormale)',
+                ], 'critical');
+                Log::warning("Compte {$sender->id} gelé automatiquement suite à une activité suspecte.");
+            }
 
             return $transfer->fresh(['senderAccount', 'receiverAccount']);
         });
