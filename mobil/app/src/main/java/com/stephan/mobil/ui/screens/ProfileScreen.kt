@@ -45,7 +45,7 @@ fun ProfileScreen(
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(if (darkMode) Color(0xFF101114) else Color.White)
+            .background(BgBase)
             .padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
@@ -61,17 +61,17 @@ fun ProfileScreen(
                     modifier = Modifier
                         .size(90.dp)
                         .background(
-                            Brush.linearGradient(colors = listOf(Color(0xFFD92C55), Color(0xFF7C4DFF))),
+                            Brush.linearGradient(colors = listOf(BrandPrimary, Color(0xFF7C4DFF))),
                             shape = CircleShape
                         )
                         .padding(3.dp)
-                        .background(Color(0xFF17181C), shape = CircleShape),
+                        .background(BgSurface, shape = CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Default.Person,
                         contentDescription = null,
-                        tint = Color(0xFFD92C55),
+                        tint = BrandPrimary,
                         modifier = Modifier.size(46.dp)
                     )
                 }
@@ -80,7 +80,7 @@ fun ProfileScreen(
 
                 Text(
                     text = state.user?.name ?: "Client SCpay",
-                    color = if (darkMode) Color.White else Color(0xFF17181C),
+                    color = TextPrimary,
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -97,13 +97,13 @@ fun ProfileScreen(
         item {
             Card(
                 shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                modifier = Modifier.border(1.dp, Color.White.copy(alpha = 0.04f), RoundedCornerShape(20.dp))
+                colors = CardDefaults.cardColors(containerColor = BgSurfaceElevated),
+                modifier = Modifier.border(1.dp, BgSurfaceTop, RoundedCornerShape(20.dp))
             ) {
                 Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     Text(
                         text = "Sécurité & Paramètres",
-                        color = Color(0xFF17181C),
+                        color = TextPrimary,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -118,7 +118,7 @@ fun ProfileScreen(
                             Icon(imageVector = Icons.Default.Dns, contentDescription = null, tint = LightSlate, modifier = Modifier.size(20.dp))
                             Spacer(modifier = Modifier.width(12.dp))
                             Column {
-                                Text(text = "Mode Démo / Mock", color = Color(0xFF17181C), fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                                Text(text = "Mode Démo / Mock", color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
                                 Text(text = "Utiliser des fausses données hors réseau", color = LightSlate, fontSize = 11.sp)
                             }
                         }
@@ -126,15 +126,15 @@ fun ProfileScreen(
                             checked = state.mockMode,
                             onCheckedChange = { vm.setMockMode(it) },
                             colors = SwitchDefaults.colors(
-                                checkedThumbColor = Color(0xFF17181C),
-                                checkedTrackColor = Color(0xFFD92C55),
+                                checkedThumbColor = Color.White,
+                                checkedTrackColor = BrandPrimary,
                                 uncheckedThumbColor = LightSlate,
-                                uncheckedTrackColor = Color.White.copy(alpha = 0.1f)
+                                uncheckedTrackColor = BgSurfaceTop
                             )
                         )
                     }
 
-                    Divider(color = Color(0xFF17181C).copy(alpha = 0.05f))
+                    Divider(color = BgSurfaceTop)
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -142,24 +142,24 @@ fun ProfileScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(imageVector = Icons.Default.DarkMode, contentDescription = null, tint = LightSlate, modifier = Modifier.size(20.dp))
+                            Icon(imageVector = Icons.Default.DarkMode, contentDescription = null, tint = BrandPrimary, modifier = Modifier.size(20.dp))
                             Spacer(modifier = Modifier.width(12.dp))
                             Column {
-                                Text(text = "Theme sombre", color = Color(0xFF17181C), fontSize = 14.sp, fontWeight = FontWeight.Medium)
-                                Text(text = "Basculer toute l'application en dark mode", color = LightSlate, fontSize = 11.sp)
+                                Text(text = "Thème sombre", color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                                Text(text = "Mode nuit activé en permanence", color = TextSecondary, fontSize = 11.sp)
                             }
                         }
                         Switch(
-                            checked = darkMode,
-                            onCheckedChange = { onToggleTheme() },
+                            checked = true,
+                            onCheckedChange = { },
                             colors = SwitchDefaults.colors(
-                                checkedThumbColor = Color(0xFF17181C),
-                                checkedTrackColor = Color(0xFFD92C55)
+                                checkedThumbColor = Color.White,
+                                checkedTrackColor = BrandPrimary
                             )
                         )
                     }
 
-                    Divider(color = Color(0xFF17181C).copy(alpha = 0.05f))
+                    Divider(color = BgSurfaceTop)
 
                     // Biometrics Switch
                     Row(
@@ -171,7 +171,7 @@ fun ProfileScreen(
                             Icon(imageVector = Icons.Default.Fingerprint, contentDescription = null, tint = LightSlate, modifier = Modifier.size(20.dp))
                             Spacer(modifier = Modifier.width(12.dp))
                             Column {
-                                Text(text = "Déverrouillage Biométrique", color = Color(0xFF17181C), fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                                Text(text = "Déverrouillage Biométrique", color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
                                 Text(text = "Empreinte digitale ou reconnaissance faciale", color = LightSlate, fontSize = 11.sp)
                             }
                         }
@@ -182,10 +182,10 @@ fun ProfileScreen(
                                 SecurityUtil.setBiometricEnabled(context, it)
                             },
                             colors = SwitchDefaults.colors(
-                                checkedThumbColor = Color(0xFF17181C),
-                                checkedTrackColor = Color(0xFFD92C55),
+                                checkedThumbColor = Color.White,
+                                checkedTrackColor = BrandPrimary,
                                 uncheckedThumbColor = LightSlate,
-                                uncheckedTrackColor = Color.White.copy(alpha = 0.1f)
+                                uncheckedTrackColor = BgSurfaceTop
                             )
                         )
                     }
@@ -197,13 +197,13 @@ fun ProfileScreen(
         item {
             Card(
                 shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                modifier = Modifier.border(1.dp, Color.White.copy(alpha = 0.04f), RoundedCornerShape(20.dp))
+                colors = CardDefaults.cardColors(containerColor = BgSurfaceElevated),
+                modifier = Modifier.border(1.dp, BgSurfaceTop, RoundedCornerShape(20.dp))
             ) {
                 Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                     Text(
                         text = "Ajouter un Bénéficiaire",
-                        color = Color(0xFF17181C),
+                        color = TextPrimary,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -243,12 +243,12 @@ fun ProfileScreen(
                                 modifier = Modifier
                                     .weight(1f)
                                     .background(
-                                        if (selected) Color(0xFFD92C55).copy(alpha = 0.15f) else Color.White.copy(alpha = 0.03f),
+                                        if (selected) BrandPrimary.copy(alpha = 0.15f) else Color.White.copy(alpha = 0.03f),
                                         shape = RoundedCornerShape(10.dp)
                                     )
                                     .border(
                                         width = 1.dp,
-                                        color = if (selected) Color(0xFFD92C55).copy(alpha = 0.5f) else Color.White.copy(alpha = 0.06f),
+                                        color = if (selected) BrandPrimary.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.06f),
                                         shape = RoundedCornerShape(10.dp)
                                     )
                                     .clickable { benefChannel = channel.first }
@@ -257,7 +257,7 @@ fun ProfileScreen(
                             ) {
                                 Text(
                                     text = channel.second,
-                                    color = if (selected) Color(0xFFD92C55) else PremiumWhite,
+                                    color = if (selected) BrandPrimary else PremiumWhite,
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -280,11 +280,11 @@ fun ProfileScreen(
                             .fillMaxWidth()
                             .height(48.dp),
                         shape = RoundedCornerShape(24.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD92C55))
+                        colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary)
                     ) {
-                        Icon(imageVector = Icons.Default.Add, contentDescription = null, tint = Color(0xFF17181C))
+                        Icon(imageVector = Icons.Default.Add, contentDescription = null, tint = BgSurface)
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text(text = "Enregistrer le bénéficiaire", color = Color(0xFF17181C), fontWeight = FontWeight.Bold)
+                        Text(text = "Enregistrer le bénéficiaire", color = TextPrimary, fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -294,22 +294,22 @@ fun ProfileScreen(
             item {
                 Card(
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    modifier = Modifier.border(1.dp, Color(0xFFE6E8EC), RoundedCornerShape(16.dp))
+                    colors = CardDefaults.cardColors(containerColor = BgSurfaceElevated),
+                    modifier = Modifier.border(1.dp, LineColor, RoundedCornerShape(16.dp))
                 ) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text("Bénéficiaires", color = Color(0xFF17181C), fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                        Text("Bénéficiaires", color = TextPrimary, fontSize = 15.sp, fontWeight = FontWeight.Bold)
                         state.beneficiaries.forEach { beneficiary ->
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Column(Modifier.weight(1f)) {
-                                    Text(beneficiary.name, color = Color(0xFF17181C), fontWeight = FontWeight.SemiBold)
+                                    Text(beneficiary.name, color = TextPrimary, fontWeight = FontWeight.SemiBold)
                                     Text("${beneficiary.bankName} · ${beneficiary.accountNumberMasked}", color = LightSlate, fontSize = 12.sp)
                                 }
                                 IconButton(onClick = { vm.deleteBeneficiary(beneficiary.id) }) {
-                                    Icon(Icons.Default.DeleteOutline, contentDescription = "Supprimer", tint = Color(0xFFD92C55))
+                                    Icon(Icons.Default.DeleteOutline, contentDescription = "Supprimer", tint = BrandPrimary)
                                 }
                             }
                         }
@@ -323,14 +323,51 @@ fun ProfileScreen(
             item {
                 Card(
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    modifier = Modifier.border(1.dp, Color.White.copy(alpha = 0.04f), RoundedCornerShape(16.dp))
+                    colors = CardDefaults.cardColors(containerColor = BgSurfaceElevated),
+                    modifier = Modifier.border(1.dp, BgSurfaceTop, RoundedCornerShape(16.dp))
                 ) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(text = "Payload du Code QR Généré", color = Color(0xFF17181C), fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                        Text(text = state.qrPayload, color = Color(0xFFD92C55), fontSize = 11.sp, modifier = Modifier.fillMaxWidth())
+                        Text(text = "Payload du Code QR Généré", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Text(text = state.qrPayload, color = BrandPrimary, fontSize = 11.sp, modifier = Modifier.fillMaxWidth())
                     }
                 }
+            }
+        }
+
+        item {
+            var showConfirm by remember { mutableStateOf(false) }
+
+            if (showConfirm) {
+                androidx.compose.material3.AlertDialog(
+                    onDismissRequest = { showConfirm = false },
+                    title = { Text("Se déconnecter ?", fontWeight = FontWeight.Bold) },
+                    text = { Text("Vous devrez vous reconnecter avec votre email et mot de passe.") },
+                    confirmButton = {
+                        Button(
+                            onClick = { vm.logout(context) },
+                            colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary)
+                        ) { Text("Déconnecter", color = Color.White) }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { showConfirm = false }) { Text("Annuler") }
+                    }
+                )
+            }
+
+            Button(
+                onClick = { showConfirm = true },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp),
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = BrandPrimary.copy(alpha = 0.08f),
+                    contentColor = BrandPrimary
+                )
+            ) {
+                Icon(Icons.Default.Logout, contentDescription = null, modifier = Modifier.size(20.dp))
+                Spacer(Modifier.width(10.dp))
+                Text("Se déconnecter", fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
             }
         }
 

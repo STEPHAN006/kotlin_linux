@@ -53,4 +53,28 @@ interface ApiService {
 
     @POST("qr/pay")
     suspend fun payQr(@Body request: QrPayRequest): Response<ApiEnvelope<TransferData>>
+
+    @GET("user")
+    suspend fun getUser(): Response<ApiEnvelope<User>>
+
+    @POST("logout")
+    suspend fun logout(): Response<ApiEnvelope<Unit>>
+
+    @GET("notifications")
+    suspend fun getNotifications(): Response<ApiEnvelope<List<AppNotification>>>
+
+    @POST("notifications/{id}/read")
+    suspend fun markNotificationRead(@Path("id") id: Int): Response<ApiEnvelope<Unit>>
+
+    @POST("notifications/read-all")
+    suspend fun markAllNotificationsRead(): Response<ApiEnvelope<Unit>>
+
+    @GET("support/ticket")
+    suspend fun getSupportTicket(): Response<ApiEnvelope<SupportTicket>>
+
+    @POST("support/ticket/{ticketId}/messages")
+    suspend fun sendSupportMessage(
+        @Path("ticketId") ticketId: Int,
+        @Body request: SendMessageRequest
+    ): Response<ApiEnvelope<SupportTicket>>
 }

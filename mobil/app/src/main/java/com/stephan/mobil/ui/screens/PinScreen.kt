@@ -23,8 +23,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.stephan.mobil.security.SecurityUtil
-import com.stephan.mobil.ui.theme.NeonEmerald
-import com.stephan.mobil.ui.theme.ObsidianBlack
+import com.stephan.mobil.ui.theme.*
+
+
 import kotlinx.coroutines.delay
 
 @Composable
@@ -67,7 +68,7 @@ fun PinScreen(
 
     Surface(
         modifier = Modifier.fillMaxSize(),
-        color = ObsidianBlack
+        color = BgDeep
     ) {
         Column(
             modifier = Modifier
@@ -86,7 +87,7 @@ fun PinScreen(
                 Icon(
                     imageVector = Icons.Default.Lock,
                     contentDescription = null,
-                    tint = NeonEmerald,
+                    tint = BrandPrimary,
                     modifier = Modifier.size(48.dp)
                 )
                 Spacer(modifier = Modifier.height(16.dp))
@@ -134,10 +135,10 @@ fun PinScreen(
                                 modifier = Modifier
                                     .size(16.dp)
                                     .clip(CircleShape)
-                                    .background(if (isFilled) NeonEmerald else Color.DarkGray.copy(alpha = 0.5f))
+                                    .background(if (isFilled) BrandPrimary else Color.DarkGray.copy(alpha = 0.5f))
                                     .border(
                                         width = 1.dp,
-                                        color = if (isFilled) NeonEmerald else Color.Gray.copy(alpha = 0.3f),
+                                        color = if (isFilled) BrandPrimary else Color.Gray.copy(alpha = 0.3f),
                                         shape = CircleShape
                                     )
                             )
@@ -200,7 +201,7 @@ fun CustomNumericKeypad(
                             .clip(CircleShape)
                             .background(
                                 if (key != "biometric" && key != "backspace") {
-                                    Color.White.copy(alpha = 0.05f)
+                                    BgSurfaceHigh
                                 } else Color.Transparent
                             )
                             .clickable(enabled = enabled) {
@@ -218,7 +219,7 @@ fun CustomNumericKeypad(
                                     Icon(
                                         imageVector = Icons.Default.Fingerprint,
                                         contentDescription = "Biométrie",
-                                        tint = NeonEmerald,
+                                        tint = BrandPrimary,
                                         modifier = Modifier.size(32.dp)
                                     )
                                 }

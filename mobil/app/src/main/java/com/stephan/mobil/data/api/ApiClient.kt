@@ -11,17 +11,26 @@ import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
 
 object ApiClient {
-    // ⚠️ PORT 8000 requis — Laravel est lancé avec: php artisan serve --host=0.0.0.0 --port=8000
-    private const val BASE_URL = "http://192.168.209.90:8000/api/"
+    // Dev: HTTP local. En production, remplacer par https:// et activer le certificate pinning.
+    private const val BASE_URL = "http://192.168.88.239:8000/api/"
+    private const val PROD_HOST = "api.scpay.mg"
+
+    // SHA-256 pins à remplacer par le vrai certificat en production (keytool / openssl)
+    private val CERT_PINS = listOf(
+        "sha256/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", // leaf
+        "sha256/BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=", // backup
+    )
+
+    private val certificatePinner = CertificatePinner.Builder()
+        .apply { CERT_PINS.forEach { add(PROD_HOST, it) } }
+        .build()
 
     private var retrofit: Retrofit? = null
 
-    /** Réinitialise le client (utile si l'IP change) */
     fun reset() { retrofit = null }
 
     fun getClient(context: Context): Retrofit {
         if (retrofit == null) {
-
             val loggingInterceptor = HttpLoggingInterceptor().apply {
                 level = HttpLoggingInterceptor.Level.BODY
             }
@@ -37,16 +46,20 @@ object ApiClient {
                 chain.proceed(requestBuilder.build())
             }
 
-            val okHttpClient = OkHttpClient.Builder()
+            val builder = OkHttpClient.Builder()
                 .addInterceptor(loggingInterceptor)
                 .addInterceptor(authInterceptor)
                 .connectTimeout(30, TimeUnit.SECONDS)
                 .readTimeout(30, TimeUnit.SECONDS)
-                .build()
+
+            // Activate certificate pinning only when targeting the production host (HTTPS)
+            if (BASE_URL.startsWith("https://")) {
+                builder.certificatePinner(certificatePinner)
+            }
 
             retrofit = Retrofit.Builder()
                 .baseUrl(BASE_URL)
-                .client(okHttpClient)
+                .client(builder.build())
                 .addConverterFactory(GsonConverterFactory.create())
                 .build()
         }

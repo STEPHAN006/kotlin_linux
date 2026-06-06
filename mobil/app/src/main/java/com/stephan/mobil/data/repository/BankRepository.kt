@@ -10,6 +10,7 @@ class BankRepository(
     private val apiService: ApiService,
     private val context: Context
 ) {
+    val appContext: Context get() = context.applicationContext
     var useMockData = false
 
     private val mockAccounts = listOf(
@@ -35,6 +36,24 @@ class BankRepository(
     private val mockCards = mutableListOf(
         Card(1, "**** **** **** 2026", "2026", "05/29", false, "virtual", 5_000_000.0)
     )
+
+    /** Restore session from saved token — called on every app start. */
+    suspend fun restoreSession(): Result<User> = runCatching {
+        if (useMockData) {
+            delay(200)
+            User(1, "Rakoto Jean", "rakoto@example.com", "+261341111111")
+        } else {
+            require(!SecurityUtil.getAuthToken(context).isNullOrBlank()) { "No saved token" }
+            val response = apiService.getUser()
+            val body = response.body()
+            require(response.isSuccessful && body != null) { "Session expirée" }
+            body.data
+        }
+    }
+
+    suspend fun logout(): Result<Unit> = runCatching {
+        if (!useMockData) apiService.logout()
+    }
 
     suspend fun login(email: String, password: String): Result<User> = runCatching {
         if (useMockData) {
@@ -141,8 +160,18 @@ class BankRepository(
     }
 
     suspend fun generateQr(accountId: Int, amount: Double?): Result<QrData> = runCatching {
-        if (useMockData) QrData("eyJ0eXBlIjoiYmFua19wYXltZW50IiwiZGVtbyI6dHJ1ZX0=", mapOf("account_id" to accountId, "amount" to (amount ?: 0.0)))
-        else apiService.generateQr(QrGenerateRequest(accountId, amount)).bodyOrThrow()
+        if (useMockData) {
+            val payload = mapOf(
+                "type" to "bank_payment",
+                "account_id" to accountId,
+                "amount" to (amount ?: 0.0),
+                "currency" to "MGA",
+                "nonce" to "demo"
+            )
+            val json = com.google.gson.Gson().toJson(payload)
+            val encoded = android.util.Base64.encodeToString(json.toByteArray(Charsets.UTF_8), android.util.Base64.NO_WRAP)
+            QrData(encoded, payload)
+        } else apiService.generateQr(QrGenerateRequest(accountId, amount)).bodyOrThrow()
     }
 
     suspend fun scanQr(payload: String): Result<Map<String, Any>> = runCatching {
@@ -163,6 +192,45 @@ class BankRepository(
             val otp = amount >= 500_000.0
             TransferData(otp, Transfer(100, amount, if (otp) "pending" else "completed", "QR-DEMO-PAY", !otp, "Paiement QR SCpay", "internal"))
         } else apiService.payQr(QrPayRequest(senderAccountId, payload, amount)).bodyOrThrow()
+    }
+
+    private val mockNotifications = listOf(
+        AppNotification(1, "Veuillez approuver votre paiement 5 USD", "Veuillez approuver votre paiement.\n05-15 20:58", false, "2026-05-15 20:58"),
+        AppNotification(2, "Votre transaction 20,00 USD a été refusée", "Carte 1000 — solde insuffisant.\n04-15 11:56", true, "2026-04-15 11:56"),
+        AppNotification(3, "Carte activée. Vous êtes prêt", "Votre voyage de paiement sécurisé commence maintenant.\n03-07 09:32", true, "2026-03-07 09:32")
+    )
+
+    suspend fun getNotifications(): Result<List<AppNotification>> = runCatching {
+        if (useMockData) mockNotifications
+        else apiService.getNotifications().bodyOrThrow()
+    }
+
+    suspend fun markAllNotificationsRead(): Result<Unit> = runCatching {
+        if (!useMockData) apiService.markAllNotificationsRead().bodyOrThrow()
+    }
+
+    suspend fun getSupportTicket(): Result<SupportTicket> = runCatching {
+        if (useMockData) {
+            SupportTicket(
+                id = 1, subject = "Support client", status = "open",
+                messages = listOf(
+                    SupportMessage(1, "admin", "Bienvenue chez SCpay ! Je suis votre assistant SCpay, ici pour vous aider.\n\nPour que je puisse vous offrir la meilleure solution, veuillez décrire votre question avec le plus de détails possible.", "2026-06-04 09:00")
+                )
+            )
+        } else apiService.getSupportTicket().bodyOrThrow()
+    }
+
+    suspend fun sendSupportMessage(ticketId: Int, message: String): Result<SupportTicket> = runCatching {
+        if (useMockData) {
+            SupportTicket(
+                id = ticketId, subject = "Support client", status = "open",
+                messages = listOf(
+                    SupportMessage(1, "admin", "Bienvenue chez SCpay ! Je suis votre assistant SCpay, ici pour vous aider.", "2026-06-04 09:00"),
+                    SupportMessage(2, "user", message, "2026-06-04 09:01"),
+                    SupportMessage(3, "admin", "Merci, un agent SCpay va traiter votre demande. Vous pouvez aussi consulter le Centre d'aide.", "2026-06-04 09:01")
+                )
+            )
+        } else apiService.sendSupportMessage(ticketId, SendMessageRequest(message)).bodyOrThrow()
     }
 
     private fun <T> retrofit2.Response<ApiEnvelope<T>>.bodyOrThrow(): T {

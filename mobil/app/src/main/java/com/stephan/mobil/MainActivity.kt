@@ -6,17 +6,21 @@ import androidx.biometric.BiometricPrompt
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.AccountBalance
+import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import com.stephan.mobil.ui.theme.*
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.font.FontWeight
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -28,10 +32,32 @@ import com.stephan.mobil.ui.viewmodel.BankUiState
 import com.stephan.mobil.ui.viewmodel.BankViewModel
 import com.stephan.mobil.ui.viewmodel.BankViewModelFactory
 import com.stephan.mobil.ui.screens.*
+import com.stephan.mobil.notifications.PushNotificationWorker
+import android.Manifest
+import android.os.Build
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.DisposableEffect
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 
 class MainActivity : FragmentActivity() {
+
+    private val notifPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { /* granted or not — on tente quand même */ }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Demande la permission POST_NOTIFICATIONS sur Android 13+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            notifPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+
+        // Crée le canal de notification dès le démarrage
+        PushNotificationWorker.createChannel(this)
+
         setContent {
             MobilTheme {
                 val context = LocalContext.current
@@ -46,7 +72,7 @@ class MainActivity : FragmentActivity() {
 
 private enum class Screen(val label: String) {
     Dashboard("Accueil"),
-    Transactions("Les atouts"),
+    Transactions("Les atouts"),  // shows CardsScreenPremium
     Transfer("Envoyer"),
     Cards("Actifs"),
     Profile("Profil")
@@ -57,6 +83,21 @@ private fun BankApp(vm: BankViewModel, activity: FragmentActivity) {
     val state by vm.uiState.collectAsState()
     val context = LocalContext.current
     var unlocked by remember { mutableStateOf(!SecurityUtil.hasPinCode(context)) }
+
+    // Splash screen while restoring session from token
+    if (!state.sessionRestored) {
+        Box(
+            modifier = Modifier.fillMaxSize().background(BgDeep),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("SCpay", color = TextPrimary, fontSize = 36.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(32.dp))
+                CircularProgressIndicator(color = BrandPrimary)
+            }
+        }
+        return
+    }
 
     // If user is not authenticated/registered in state, show the beautiful onboarding welcome screen
     if (state.user == null) {
@@ -87,10 +128,10 @@ private fun BankApp(vm: BankViewModel, activity: FragmentActivity) {
 @Composable
 private fun MainShell(state: BankUiState, vm: BankViewModel) {
     var selected by remember { mutableStateOf(Screen.Dashboard) }
-    var darkMode by remember { mutableStateOf(false) }
+    var darkMode by remember { mutableStateOf(true) }
     var immersive by remember { mutableStateOf(false) }
     val snackbar = remember { SnackbarHostState() }
-    val shellBg = if (darkMode) Color(0xFF101114) else Color.White
+    val shellBg = BgBase
 
     LaunchedEffect(state.message, state.error) {
         val msg = state.message ?: state.error
@@ -109,8 +150,8 @@ private fun MainShell(state: BankUiState, vm: BankViewModel) {
         bottomBar = {
             if (!immersive) {
                 NavigationBar(
-                    containerColor = shellBg,
-                    tonalElevation = 8.dp
+                    containerColor = BgDeep,
+                    tonalElevation = 0.dp
                 ) {
                     Screen.entries.forEach { screen ->
                         NavigationBarItem(
@@ -119,11 +160,11 @@ private fun MainShell(state: BankUiState, vm: BankViewModel) {
                             icon = { Icon(screen.icon(), contentDescription = screen.label) },
                             label = { Text(screen.label) },
                             colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = Color(0xFFD92C55),
-                                selectedTextColor = Color(0xFFD92C55),
-                                indicatorColor = Color(0xFFEDEDEF),
-                                unselectedIconColor = if (darkMode) Color.White else Color(0xFF17181C),
-                                unselectedTextColor = if (darkMode) Color.White else Color(0xFF17181C)
+                                selectedIconColor = BrandPrimary,
+                                selectedTextColor = BrandPrimary,
+                                indicatorColor = BrandPrimarySoft,
+                                unselectedIconColor = TextSecondary,
+                                unselectedTextColor = TextSecondary
                             )
                         )
                     }
@@ -143,12 +184,13 @@ private fun MainShell(state: BankUiState, vm: BankViewModel) {
                     vm = vm,
                     openTransfer = { selected = Screen.Transfer },
                     openCards = { selected = Screen.Cards },
+                    openTransactions = { selected = Screen.Transactions },
                     darkMode = darkMode,
                     onFullScreenChanged = { immersive = it }
                 )
-                Screen.Transactions -> TransactionsScreen(state = state, darkMode = darkMode)
+                Screen.Transactions -> CardsScreenPremium(state = state, vm = vm, darkMode = darkMode)
                 Screen.Transfer -> TransferScreen(state = state, vm = vm, darkMode = darkMode)
-                Screen.Cards -> CardsScreen(state = state, vm = vm, darkMode = darkMode)
+                Screen.Cards -> AssetsScreen(state = state, vm = vm, darkMode = darkMode)
                 Screen.Profile -> ProfileScreen(state = state, vm = vm, darkMode = darkMode, onToggleTheme = { darkMode = !darkMode })
             }
         }
@@ -157,9 +199,9 @@ private fun MainShell(state: BankUiState, vm: BankViewModel) {
 
 private fun Screen.icon() = when (this) {
     Screen.Dashboard -> Icons.Default.AccountBalance
-    Screen.Transactions -> Icons.AutoMirrored.Filled.ReceiptLong
+    Screen.Transactions -> Icons.Default.CreditCard
     Screen.Transfer -> Icons.AutoMirrored.Filled.Send
-    Screen.Cards -> Icons.Default.CreditCard
+    Screen.Cards -> Icons.Default.AccountBalanceWallet
     Screen.Profile -> Icons.Default.Person
 }
 

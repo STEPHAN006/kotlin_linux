@@ -8,12 +8,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.stephan.mobil.ui.theme.LightSlate
-import com.stephan.mobil.ui.theme.NeonEmerald
+import com.stephan.mobil.ui.theme.*
 
 @Composable
 fun PremiumInputField(
@@ -21,28 +21,37 @@ fun PremiumInputField(
     value: String,
     onValueChange: (String) -> Unit,
     keyboardType: KeyboardType,
-    icon: androidx.compose.ui.graphics.vector.ImageVector
+    icon: ImageVector
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(
             text = label,
-            color = LightSlate,
-            fontSize = 13.sp,
+            color = TextSecondary,
+            fontSize = 12.sp,
             fontWeight = FontWeight.Medium
         )
         OutlinedTextField(
             value = value,
             onValueChange = onValueChange,
-            leadingIcon = { Icon(icon, contentDescription = null, tint = LightSlate, modifier = Modifier.size(20.dp)) },
+            leadingIcon = {
+                Icon(
+                    icon,
+                    contentDescription = null,
+                    tint = BrandPrimary,
+                    modifier = Modifier.size(20.dp)
+                )
+            },
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color(0xFFF7F8FA), RoundedCornerShape(14.dp)),
+                .background(BgSurfaceHigh, RoundedCornerShape(14.dp)),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedTextColor = Color(0xFF17181C),
-                unfocusedTextColor = Color(0xFF17181C),
-                focusedBorderColor = Color(0xFFD92C55).copy(alpha = 0.8f),
-                unfocusedBorderColor = Color(0xFFE6E8EC),
-                cursorColor = Color(0xFFD92C55)
+                focusedTextColor = TextPrimary,
+                unfocusedTextColor = TextPrimary,
+                focusedBorderColor = BrandPrimary,
+                unfocusedBorderColor = BgSurfaceTop,
+                cursorColor = BrandPrimary,
+                focusedLeadingIconColor = BrandPrimary,
+                unfocusedLeadingIconColor = TextSecondary
             ),
             keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
             shape = RoundedCornerShape(14.dp),

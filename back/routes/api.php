@@ -6,8 +6,10 @@ use App\Http\Controllers\Api\TransactionController;
 use App\Http\Controllers\Api\AdminController;
 use App\Http\Controllers\Api\BeneficiaryController;
 use App\Http\Controllers\Api\CardController;
+use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\QrController;
 use App\Http\Controllers\Api\StatementController;
+use App\Http\Controllers\Api\SupportController;
 use App\Http\Controllers\Api\TransferController;
 use App\Http\Middleware\EnsureUserIsAdmin;
 use App\Http\Middleware\ForceJsonResponse;
@@ -83,6 +85,16 @@ Route::middleware(ForceJsonResponse::class)->group(function () {
         Route::post('/cards', [CardController::class, 'store']);
         Route::post('/cards/{card}/toggle', [CardController::class, 'toggle']);
         Route::get('/statements/monthly', [StatementController::class, 'monthly']);
+        Route::get('/transactions/export', [StatementController::class, 'exportCsv']);
+
+        // Notifications
+        Route::get('/notifications', [NotificationController::class, 'index']);
+        Route::post('/notifications/{id}/read', [NotificationController::class, 'markRead']);
+        Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead']);
+
+        // Customer support chat
+        Route::get('/support/ticket', [SupportController::class, 'getOrCreateTicket']);
+        Route::post('/support/ticket/{ticketId}/messages', [SupportController::class, 'sendMessage']);
 
         /*
         |------------------------------------------------------------------

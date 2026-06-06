@@ -5,13 +5,15 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.stephan.mobil.data.model.*
 import com.stephan.mobil.data.repository.BankRepository
+import com.stephan.mobil.notifications.PushNotificationWorker
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 data class BankUiState(
-    val loading: Boolean = true,
+    val loading: Boolean = false,
+    val sessionRestored: Boolean = false,
     val user: User? = null,
     val balance: BalanceResponse = BalanceResponse(),
     val transactions: List<Transaction> = emptyList(),
@@ -19,6 +21,11 @@ data class BankUiState(
     val cards: List<Card> = emptyList(),
     val pendingTransfer: Transfer? = null,
     val qrPayload: String? = null,
+    val scannedQrData: Map<String, Any>? = null,
+    val paymentSuccess: Transfer? = null,
+    val notifications: List<AppNotification> = emptyList(),
+    val supportTicket: SupportTicket? = null,
+    val supportLoading: Boolean = false,
     val message: String? = null,
     val error: String? = null,
     val mockMode: Boolean = true
@@ -29,7 +36,17 @@ class BankViewModel(private val repository: BankRepository) : ViewModel() {
     val uiState: StateFlow<BankUiState> = _uiState.asStateFlow()
 
     init {
-        refreshAll()
+        viewModelScope.launch {
+            repository.restoreSession().fold(
+                onSuccess = { user ->
+                    _uiState.value = _uiState.value.copy(user = user, sessionRestored = true)
+                    refreshAll()
+                },
+                onFailure = {
+                    _uiState.value = _uiState.value.copy(loading = false, sessionRestored = true)
+                }
+            )
+        }
     }
 
     fun setMockMode(enabled: Boolean) {
@@ -40,7 +57,11 @@ class BankViewModel(private val repository: BankRepository) : ViewModel() {
 
     fun login(email: String, password: String) = viewModelScope.launch {
         repository.login(email, password).fold(
-            onSuccess = { _uiState.value = _uiState.value.copy(user = it, message = "Connecte") },
+            onSuccess = { user ->
+                _uiState.value = _uiState.value.copy(user = user, message = "Connecte")
+                // Lance le worker de push dès le login
+                repository.appContext?.let { PushNotificationWorker.schedule(it) }
+            },
             onFailure = { _uiState.value = _uiState.value.copy(error = it.message) }
         )
         refreshAll()
@@ -48,7 +69,10 @@ class BankViewModel(private val repository: BankRepository) : ViewModel() {
 
     fun register(name: String, email: String, phone: String, password: String) = viewModelScope.launch {
         repository.register(name, email, phone, password).fold(
-            onSuccess = { _uiState.value = _uiState.value.copy(user = it, message = "Compte cree") },
+            onSuccess = { user ->
+                _uiState.value = _uiState.value.copy(user = user, message = "Compte cree")
+                repository.appContext?.let { PushNotificationWorker.schedule(it) }
+            },
             onFailure = { _uiState.value = _uiState.value.copy(error = it.message) }
         )
         refreshAll()
@@ -102,17 +126,8 @@ class BankViewModel(private val repository: BankRepository) : ViewModel() {
                     message = if (it.otpRequired) "OTP requis: utilise 123456 en mock, ou lis laravel.log en API" else "Virement execute"
                 )
                 refreshAll()
-            },
-            onFailure = { _uiState.value = _uiState.value.copy(error = it.message) }
-        )
-    }
-
-    fun verifyOtp(otp: String) = viewModelScope.launch {
-        val reference = _uiState.value.pendingTransfer?.reference ?: return@launch
-        repository.verifyOtp(reference, otp).fold(
-            onSuccess = {
-                _uiState.value = _uiState.value.copy(pendingTransfer = null, message = "OTP valide")
-                refreshAll()
+                // Poll immédiat pour la notif push
+                if (!it.otpRequired) repository.appContext?.let { ctx -> PushNotificationWorker.pollNow(ctx) }
             },
             onFailure = { _uiState.value = _uiState.value.copy(error = it.message) }
         )
@@ -149,7 +164,12 @@ class BankViewModel(private val repository: BankRepository) : ViewModel() {
             return@launch
         }
         repository.scanQr(payload).fold(
-            onSuccess = { _uiState.value = _uiState.value.copy(message = "QR valide: pret pour paiement") },
+            onSuccess = { data ->
+                _uiState.value = _uiState.value.copy(
+                    scannedQrData = data,
+                    message = "QR valide: prêt pour paiement"
+                )
+            },
             onFailure = { _uiState.value = _uiState.value.copy(error = it.message) }
         )
     }
@@ -159,12 +179,68 @@ class BankViewModel(private val repository: BankRepository) : ViewModel() {
             onSuccess = {
                 _uiState.value = _uiState.value.copy(
                     pendingTransfer = if (it.otpRequired) it.transfer else null,
-                    message = if (it.otpRequired) "OTP requis pour finaliser le paiement QR" else "Paiement QR envoye"
+                    paymentSuccess = if (!it.otpRequired) it.transfer else null,
+                    scannedQrData = null,
+                    message = if (it.otpRequired) "OTP requis pour finaliser le paiement QR" else null
                 )
                 refreshAll()
             },
             onFailure = { _uiState.value = _uiState.value.copy(error = it.message) }
         )
+    }
+
+    fun clearPaymentSuccess() {
+        _uiState.value = _uiState.value.copy(paymentSuccess = null)
+    }
+
+    fun loadNotifications() = viewModelScope.launch {
+        repository.getNotifications().fold(
+            onSuccess = { _uiState.value = _uiState.value.copy(notifications = it) },
+            onFailure = { /* silently ignore */ }
+        )
+    }
+
+    fun markAllNotificationsRead() = viewModelScope.launch {
+        repository.markAllNotificationsRead()
+        _uiState.value = _uiState.value.copy(
+            notifications = _uiState.value.notifications.map { it.copy(read = true) }
+        )
+    }
+
+    fun loadSupportTicket() = viewModelScope.launch {
+        _uiState.value = _uiState.value.copy(supportLoading = true)
+        repository.getSupportTicket().fold(
+            onSuccess = { _uiState.value = _uiState.value.copy(supportTicket = it, supportLoading = false) },
+            onFailure = { _uiState.value = _uiState.value.copy(supportLoading = false, error = it.message) }
+        )
+    }
+
+    fun sendSupportMessage(message: String) = viewModelScope.launch {
+        val ticketId = _uiState.value.supportTicket?.id ?: return@launch
+        _uiState.value = _uiState.value.copy(supportLoading = true)
+        repository.sendSupportMessage(ticketId, message).fold(
+            onSuccess = { _uiState.value = _uiState.value.copy(supportTicket = it, supportLoading = false) },
+            onFailure = { _uiState.value = _uiState.value.copy(supportLoading = false, error = it.message) }
+        )
+    }
+
+    fun verifyOtp(otp: String) = viewModelScope.launch {
+        val reference = _uiState.value.pendingTransfer?.reference ?: return@launch
+        repository.verifyOtp(reference, otp).fold(
+            onSuccess = {
+                _uiState.value = _uiState.value.copy(pendingTransfer = null, message = "OTP valide")
+                refreshAll()
+                repository.appContext?.let { PushNotificationWorker.pollNow(it) }
+            },
+            onFailure = { _uiState.value = _uiState.value.copy(error = it.message) }
+        )
+    }
+
+    fun logout(context: android.content.Context) = viewModelScope.launch {
+        PushNotificationWorker.cancel(context)
+        runCatching { repository.logout() }
+        com.stephan.mobil.security.SecurityUtil.clearData(context)
+        _uiState.value = BankUiState(sessionRestored = true, mockMode = repository.useMockData)
     }
 
     fun consumeMessages() {
