@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\Account;
 use App\Models\Beneficiary;
 use App\Models\Card;
+use App\Models\CryptoWallet;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
@@ -240,6 +241,54 @@ class DatabaseSeeder extends Seeder
         }
 
         $this->command->info("✅ {$transactionCount} transactions created across " . count($accounts) . " accounts.");
+
+        // ================================================================
+        // 5. Seed Crypto Wallets (demo balances for each user)
+        // ================================================================
+        $this->command->info('₿ Seeding crypto wallets...');
+
+        $symbols = ['BTC', 'ETH', 'SOL', 'BNB', 'USDT', 'USDC', 'TON', 'S'];
+
+        $demoBalances = [
+            'rakoto@example.com' => ['BTC' => 0.0012, 'ETH' => 0.08, 'SOL' => 6.5, 'USDT' => 120.0, 'USDC' => 0, 'BNB' => 0.3, 'TON' => 50.0, 'S' => 0],
+            'rasoa@example.com'  => ['BTC' => 0.0035, 'ETH' => 0.25, 'SOL' => 0,   'USDT' => 450.0, 'USDC' => 200.0, 'BNB' => 0, 'TON' => 0, 'S' => 1000.0],
+            'rabe@example.com'   => ['BTC' => 0,      'ETH' => 0,    'SOL' => 2.0, 'USDT' => 55.0,  'USDC' => 0, 'BNB' => 0, 'TON' => 25.0, 'S' => 0],
+        ];
+
+        $addressGenerators = [
+            'BTC'  => fn() => 'bc1q' . substr(bin2hex(random_bytes(20)), 0, 38),
+            'ETH'  => fn() => '0x' . bin2hex(random_bytes(20)),
+            'SOL'  => fn() => rtrim(strtr(base64_encode(random_bytes(32)), '+/', 'AB'), '='),
+            'BNB'  => fn() => '0x' . bin2hex(random_bytes(20)),
+            'USDT' => fn() => '0x' . bin2hex(random_bytes(20)),
+            'USDC' => fn() => '0x' . bin2hex(random_bytes(20)),
+            'TON'  => fn() => 'UQ' . substr(rtrim(strtr(base64_encode(random_bytes(34)), '+/', '-_'), '='), 0, 46),
+            'S'    => fn() => '0x' . bin2hex(random_bytes(20)),
+        ];
+
+        User::where('role', 'user')->get()->each(function (User $user) use ($symbols, $demoBalances, $addressGenerators) {
+            $balances = $demoBalances[$user->email] ?? [];
+            foreach ($symbols as $symbol) {
+                CryptoWallet::create([
+                    'user_id' => $user->id,
+                    'symbol'  => $symbol,
+                    'address' => ($addressGenerators[$symbol])(),
+                    'balance' => $balances[$symbol] ?? 0,
+                ]);
+            }
+        });
+
+        // Admin gets empty wallets
+        foreach ($symbols as $symbol) {
+            CryptoWallet::create([
+                'user_id' => $admin->id,
+                'symbol'  => $symbol,
+                'address' => ($addressGenerators[$symbol])(),
+                'balance' => 0,
+            ]);
+        }
+
+        $this->command->info('✅ Crypto wallets seeded.');
 
         // ================================================================
         // Summary
