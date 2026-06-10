@@ -214,11 +214,11 @@
     <div class="p-3 border-t border-white/10 flex-shrink-0">
         <div class="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-white/5 transition-all">
             <div class="w-9 h-9 bg-primary-container/40 rounded-full flex items-center justify-center text-white font-bold text-xs flex-shrink-0">
-                {{ strtoupper(substr(auth('admin')->user()->name ?? 'A', 0, 2)) }}
+                {{ strtoupper(substr(session('admin_name', 'A'), 0, 2)) }}
             </div>
             <div class="flex-1 min-w-0 overflow-hidden transition-all duration-300" :class="sidebarOpen ? 'w-auto opacity-100' : 'w-0 opacity-0'">
-                <p class="text-sm font-medium text-white truncate">{{ auth('admin')->user()->name ?? 'Admin' }}</p>
-                <p class="text-xs text-white/40 truncate">{{ auth('admin')->user()->email ?? '' }}</p>
+                <p class="text-sm font-medium text-white truncate">{{ session('admin_name', 'Admin') }}</p>
+                <p class="text-xs text-white/40 truncate">admin@bankingapp.mg</p>
             </div>
             <form action="{{ route('admin.logout') }}" method="POST" class="flex-shrink-0">
                 @csrf
