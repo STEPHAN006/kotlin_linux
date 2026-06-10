@@ -51,6 +51,7 @@ import androidx.compose.material.icons.filled.NotificationsNone
 import androidx.compose.material.icons.filled.QrCode2
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.RemoveRedEye
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.Tune
@@ -126,7 +127,11 @@ fun DashboardScreen(
             vm = vm,
             onBack = { overlay = HomeOverlay.None }
         )
-        HomeOverlay.Notifications -> NotificationsScreen(onBack = { overlay = HomeOverlay.None })
+        HomeOverlay.Notifications -> NotificationsScreen(
+            state = state,
+            vm = vm,
+            onBack = { overlay = HomeOverlay.None }
+        )
         HomeOverlay.Support -> SupportChatScreen(onBack = { overlay = HomeOverlay.None })
         HomeOverlay.None -> HomeContent(
             state = state,
@@ -152,13 +157,15 @@ private fun HomeContent(
     vm: BankViewModel,
     darkMode: Boolean
 ) {
-    var currency by remember { mutableStateOf("USD") }
-    var menuOpen by remember { mutableStateOf(false) }
-    val amount = when (currency) {
-        "EUR" -> "18,40"
-        "BTC" -> "0,00019"
-        else -> "20,00"
+    var showBalance by remember { mutableStateOf(true) }
+    val mga = state.mgaPerUsd
+    val totalMga = state.balance.totalBalance
+    val totalUsd = totalMga / mga
+    val cryptoTotalUsd = state.cryptoWallets.sumOf { wallet ->
+        val price = state.cryptoMarkets.find { it.id == wallet.coinId }?.currentPrice ?: 0.0
+        wallet.balance * price
     }
+    val grandTotalUsd = totalUsd + cryptoTotalUsd
 
     LazyColumn(
         modifier = Modifier
@@ -197,37 +204,36 @@ private fun HomeContent(
         }
 
         item {
+            val ink = if (darkMode) Color.White else Ink
             Column {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("Valeur Totale Estimée", color = Muted, fontSize = 14.sp)
-                    Icon(Icons.Default.KeyboardArrowDown, null, tint = Muted, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(12.dp))
-                    Icon(Icons.Default.RemoveRedEye, null, tint = Muted, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(10.dp))
+                    IconButton(
+                        onClick = { showBalance = !showBalance },
+                        modifier = Modifier.size(22.dp)
+                    ) {
+                        Icon(
+                            if (showBalance) Icons.Default.RemoveRedEye else Icons.Default.VisibilityOff,
+                            null, tint = Muted, modifier = Modifier.size(17.dp)
+                        )
+                    }
                 }
                 Spacer(Modifier.height(10.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(amount, color = Ink, fontSize = 44.sp, fontWeight = FontWeight.Bold)
-                    Spacer(Modifier.width(14.dp))
-                    Box {
-                        Row(
-                            modifier = Modifier.clickable { menuOpen = true },
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(currency, color = Ink, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
-                            Icon(Icons.Default.KeyboardArrowDown, null, tint = Ink)
-                        }
-                        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                            listOf("USD", "EUR", "BTC").forEach {
-                                DropdownMenuItem(
-                                    text = { Text(it) },
-                                    onClick = {
-                                        currency = it
-                                        menuOpen = false
-                                    }
-                                )
-                            }
-                        }
-                    }
+                Row(verticalAlignment = Alignment.Bottom) {
+                    Text(
+                        text = if (showBalance) "%.2f".format(grandTotalUsd) else "••••",
+                        color = ink, fontSize = 44.sp, fontWeight = FontWeight.Bold
+                    )
+                    Spacer(Modifier.width(10.dp))
+                    Text("USD", color = ink, fontSize = 18.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 8.dp))
+                }
+                if (showBalance) {
+                    Text(
+                        "≈ %,.0f MGA".format(totalMga).replace(",", " ") +
+                                if (cryptoTotalUsd > 0) " + %.2f USD crypto".format(cryptoTotalUsd) else "",
+                        color = Muted, fontSize = 12.sp
+                    )
                 }
             }
         }
@@ -289,7 +295,7 @@ private fun HomeContent(
                     Icon(Icons.Default.KeyboardArrowRight, null, tint = Muted)
                 }
                 Spacer(Modifier.height(22.dp))
-                Text("Limite jusqu'à ($currency)", color = Muted, fontSize = 14.sp)
+                Text("Limite jusqu'à (USD)", color = Muted, fontSize = 14.sp)
                 Text("****", color = Ink, fontSize = 26.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(18.dp))
                 Button(
@@ -952,47 +958,94 @@ private fun createQrBitmap(payload: String, size: Int): Bitmap {
 }
 
 @Composable
-private fun NotificationsScreen(onBack: () -> Unit) {
-    val notices = listOf(
-        "Veuillez approuver votre paiement 5USD maintenant" to "Veuillez approuver votre paiement.\n05-15 20:58",
-        "Help us keep things up to date" to "Tap [Continue] when it's convenient to answer a few quick questions.\n04-27 02:16",
-        "Your 20.00USD transaction was declined" to "Card 1000 had a 20.00USD transaction declined: Not enough balance.\n04-15 11:56",
-        "Please approve your 0USD payment now" to "Please approve your payment.\n03-07 13:35",
-        "Card activated. You're ready to go" to "Your secure payment journey starts now.\n03-07 09:32"
-    )
+private fun NotificationsScreen(
+    state: BankUiState,
+    vm: BankViewModel,
+    onBack: () -> Unit
+) {
+    androidx.compose.runtime.LaunchedEffect(Unit) { vm.loadNotifications() }
+
+    val unreadCount = state.notifications.count { !it.read }
+
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
             .background(PageBg)
             .statusBarsPadding()
             .padding(horizontal = 20.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(0.dp)
     ) {
         item {
-            Row(Modifier.fillMaxWidth().padding(top = 24.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth().padding(top = 24.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = Ink) }
-                Text("Notifications", color = Ink, fontSize = 24.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                Icon(Icons.Default.Tune, null, tint = Ink)
-            }
-        }
-        item {
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("Tout", color = Color.White, modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(Ink).padding(horizontal = 18.dp, vertical = 10.dp))
-                Text("Notification de transaction", color = Ink, modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(Soft).padding(horizontal = 18.dp, vertical = 10.dp))
-            }
-        }
-        items(notices) { notice ->
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
-                Box(Modifier.size(34.dp).clip(CircleShape).background(Soft), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Outlined.Mail, null, tint = Ink, modifier = Modifier.size(18.dp))
+                Text("Notifications", color = Ink, fontSize = 22.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                if (unreadCount > 0) {
+                    TextButton(onClick = { vm.markAllNotificationsRead() }) {
+                        Text("Tout lire", color = Color(0xFFD92C55), fontSize = 13.sp)
+                    }
                 }
-                Spacer(Modifier.width(14.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(notice.first, color = Ink, fontSize = 19.sp, fontWeight = FontWeight.SemiBold)
-                    Spacer(Modifier.height(8.dp))
-                    Text(notice.second, color = Muted, fontSize = 15.sp, lineHeight = 20.sp)
-                    Spacer(Modifier.height(14.dp))
-                    Divider(color = Line)
+            }
+        }
+
+        if (state.notifications.isEmpty()) {
+            item {
+                Box(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 60.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(Icons.Outlined.Mail, null, tint = Muted, modifier = Modifier.size(48.dp))
+                        Spacer(Modifier.height(12.dp))
+                        Text("Aucune notification", color = Muted, fontSize = 15.sp)
+                    }
+                }
+            }
+        } else {
+            items(state.notifications) { notif ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { if (!notif.read) vm.markNotificationRead(notif.id) }
+                        .background(if (!notif.read) Color(0xFFFFF5F7) else Color.Transparent)
+                        .padding(vertical = 14.dp),
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clip(CircleShape)
+                            .background(if (!notif.read) Color(0xFFD92C55).copy(alpha = 0.12f) else Soft),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Outlined.Mail, null,
+                            tint = if (!notif.read) Color(0xFFD92C55) else Muted,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                    Spacer(Modifier.width(14.dp))
+                    Column(Modifier.weight(1f)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                notif.title,
+                                color = Ink,
+                                fontSize = 15.sp,
+                                fontWeight = if (!notif.read) FontWeight.SemiBold else FontWeight.Normal,
+                                modifier = Modifier.weight(1f)
+                            )
+                            if (!notif.read) {
+                                Box(Modifier.size(8.dp).clip(CircleShape).background(Color(0xFFD92C55)))
+                            }
+                        }
+                        Spacer(Modifier.height(4.dp))
+                        Text(notif.body, color = Muted, fontSize = 13.sp, lineHeight = 18.sp)
+                        notif.createdAt?.let {
+                            Spacer(Modifier.height(4.dp))
+                            Text(it, color = Muted, fontSize = 11.sp)
+                        }
+                        Spacer(Modifier.height(14.dp))
+                        Divider(color = Line)
+                    }
                 }
             }
         }

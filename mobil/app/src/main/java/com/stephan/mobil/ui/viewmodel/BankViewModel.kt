@@ -26,6 +26,7 @@ data class BankUiState(
     val message: String? = null,
     val error: String? = null,
     val mockMode: Boolean = true,
+    val notifications: List<com.stephan.mobil.data.model.AppNotification> = emptyList(),
     val kycRejectionReason: String? = null,
     val kycSubmitting: Boolean = false,
     val cryptoWallets: List<CryptoWallet> = emptyList(),
@@ -242,6 +243,29 @@ class BankViewModel(private val repository: BankRepository, private val appConte
                 }
             },
             onFailure = { _uiState.value = _uiState.value.copy(error = "Téléchargement échoué: ${it.message}") }
+        )
+    }
+
+    // ── Notifications ────────────────────────────────────────────────────────
+
+    fun loadNotifications() = viewModelScope.launch {
+        repository.getNotifications().fold(
+            onSuccess = { _uiState.value = _uiState.value.copy(notifications = it) },
+            onFailure = { }
+        )
+    }
+
+    fun markNotificationRead(id: Int) = viewModelScope.launch {
+        repository.markNotificationRead(id).fold(
+            onSuccess = { loadNotifications() },
+            onFailure = { }
+        )
+    }
+
+    fun markAllNotificationsRead() = viewModelScope.launch {
+        repository.markAllNotificationsRead().fold(
+            onSuccess = { loadNotifications() },
+            onFailure = { }
         )
     }
 
