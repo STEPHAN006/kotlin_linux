@@ -12,7 +12,7 @@ import java.util.concurrent.TimeUnit
 
 object ApiClient {
     // Dev: HTTP local. En production, remplacer par https:// et activer le certificate pinning.
-    private const val BASE_URL = "http://192.168.88.239:8000/api/"
+    private const val BASE_URL = "http://192.168.1.146:8000/api/"
     private const val PROD_HOST = "api.scpay.mg"
 
     // SHA-256 pins à remplacer par le vrai certificat en production (keytool / openssl)
