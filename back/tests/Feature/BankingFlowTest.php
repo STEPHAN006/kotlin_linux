@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Account;
 use App\Models\Beneficiary;
 use App\Models\Card;
+use App\Models\CryptoWallet;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
@@ -440,6 +441,166 @@ class BankingFlowTest extends TestCase
         ])->assertCreated();
 
         $this->assertDatabaseHas('audit_logs', ['action' => 'transfer.completed']);
+    }
+
+    // ------------------------------------------------------------------ Crypto
+
+    public function test_user_can_get_crypto_wallets(): void
+    {
+        [$user, $account] = $this->singleAccount(500_000);
+        Sanctum::actingAs($user);
+
+        $this->getJson('/api/crypto/wallets')
+            ->assertOk()
+            ->assertJsonStructure(['data' => [['symbol', 'name', 'coin_id', 'address', 'balance']]]);
+
+        $this->assertDatabaseCount('crypto_wallets', 8);
+    }
+
+    public function test_user_can_buy_crypto(): void
+    {
+        [$user, $account] = $this->singleAccount(1_000_000);
+        Sanctum::actingAs($user);
+
+        $this->postJson('/api/crypto/buy', [
+            'symbol'      => 'USDT',
+            'amount_mga'  => 45_000,
+            'price_usd'   => 1.0,
+            'mga_per_usd' => 4500,
+        ])->assertOk()
+          ->assertJsonPath('success', true)
+          ->assertJsonStructure(['data' => ['symbol', 'crypto_amount', 'total_mga']]);
+
+        $this->assertDatabaseHas('crypto_wallets', ['user_id' => $user->id, 'symbol' => 'USDT']);
+        $this->assertDatabaseHas('crypto_transactions', ['user_id' => $user->id, 'type' => 'buy', 'symbol' => 'USDT']);
+        $this->assertEquals(955_000, Account::find($account->id)->balance);
+    }
+
+    public function test_buy_crypto_fails_with_insufficient_mga_balance(): void
+    {
+        [$user, $account] = $this->singleAccount(10_000);
+        Sanctum::actingAs($user);
+
+        $this->postJson('/api/crypto/buy', [
+            'symbol'      => 'BTC',
+            'amount_mga'  => 500_000,
+            'price_usd'   => 60000,
+            'mga_per_usd' => 4500,
+        ])->assertStatus(422)
+          ->assertJsonPath('success', false);
+    }
+
+    public function test_user_can_sell_crypto(): void
+    {
+        [$user, $account] = $this->singleAccount(500_000);
+        Sanctum::actingAs($user);
+
+        CryptoWallet::create([
+            'user_id' => $user->id,
+            'symbol'  => 'USDT',
+            'address' => '0xabc123',
+            'balance' => 100.0,
+        ]);
+
+        $this->postJson('/api/crypto/sell', [
+            'symbol'        => 'USDT',
+            'crypto_amount' => 10.0,
+            'price_usd'     => 1.0,
+            'mga_per_usd'   => 4500,
+        ])->assertOk()
+          ->assertJsonPath('success', true)
+          ->assertJsonStructure(['data' => ['symbol', 'crypto_amount', 'total_mga']]);
+
+        $this->assertEquals(500_000 + 45_000, Account::find($account->id)->balance);
+        $this->assertEquals(90.0, CryptoWallet::where('user_id', $user->id)->where('symbol', 'USDT')->first()->balance);
+    }
+
+    public function test_sell_crypto_fails_with_insufficient_balance(): void
+    {
+        [$user, $account] = $this->singleAccount(500_000);
+        Sanctum::actingAs($user);
+
+        CryptoWallet::create([
+            'user_id' => $user->id,
+            'symbol'  => 'BTC',
+            'address' => 'bc1q_test',
+            'balance' => 0.001,
+        ]);
+
+        $this->postJson('/api/crypto/sell', [
+            'symbol'        => 'BTC',
+            'crypto_amount' => 1.0,
+            'price_usd'     => 60000,
+            'mga_per_usd'   => 4500,
+        ])->assertStatus(422)
+          ->assertJsonPath('message', 'Solde crypto insuffisant.');
+    }
+
+    public function test_user_can_send_crypto(): void
+    {
+        [$user, $account] = $this->singleAccount(500_000);
+        Sanctum::actingAs($user);
+
+        CryptoWallet::create([
+            'user_id' => $user->id,
+            'symbol'  => 'ETH',
+            'address' => '0xsender',
+            'balance' => 2.0,
+        ]);
+
+        $this->postJson('/api/crypto/send', [
+            'symbol'        => 'ETH',
+            'crypto_amount' => 0.5,
+            'to_address'    => '0x1234567890abcdef1234567890abcdef12345678',
+            'price_usd'     => 3000,
+            'mga_per_usd'   => 4500,
+        ])->assertOk()
+          ->assertJsonPath('success', true)
+          ->assertJsonStructure(['data' => ['tx_hash']]);
+
+        $this->assertEquals(1.5, CryptoWallet::where('user_id', $user->id)->where('symbol', 'ETH')->first()->balance);
+        $this->assertDatabaseHas('crypto_transactions', ['user_id' => $user->id, 'type' => 'send', 'symbol' => 'ETH']);
+    }
+
+    public function test_user_can_list_crypto_transactions(): void
+    {
+        [$user, $account] = $this->singleAccount(500_000);
+        Sanctum::actingAs($user);
+
+        $this->getJson('/api/crypto/transactions')
+            ->assertOk()
+            ->assertJsonStructure(['data']);
+    }
+
+    // ------------------------------------------------------------------ KYC
+
+    public function test_user_can_check_kyc_status(): void
+    {
+        [$user, $account] = $this->singleAccount();
+        Sanctum::actingAs($user);
+
+        $this->getJson('/api/kyc/status')
+            ->assertOk()
+            ->assertJsonPath('data.status', 'none');
+    }
+
+    public function test_kyc_submit_requires_all_fields(): void
+    {
+        [$user, $account] = $this->singleAccount();
+        Sanctum::actingAs($user);
+
+        $this->postJson('/api/kyc/submit', [])
+            ->assertStatus(422);
+    }
+
+    public function test_notifications_endpoint_returns_list(): void
+    {
+        [$user, $account] = $this->singleAccount();
+        Sanctum::actingAs($user);
+
+        $this->getJson('/api/notifications')
+            ->assertOk()
+            ->assertJsonStructure(['data']);
     }
 
     // ------------------------------------------------------------------ Helpers
