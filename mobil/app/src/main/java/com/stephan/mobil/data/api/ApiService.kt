@@ -119,7 +119,13 @@ interface ApiService {
     @GET("crypto/transactions")
     suspend fun getCryptoTransactions(): Response<ApiEnvelope<Map<String, Any>>>
 
-    // Push notifications polling
+    // Push notifications
     @GET("notifications")
     suspend fun getNotifications(): Response<ApiEnvelope<List<AppNotification>>>
+
+    @POST("notifications/{id}/read")
+    suspend fun markNotificationRead(@Path("id") id: Int): Response<ApiEnvelope<Unit>>
+
+    @POST("notifications/read-all")
+    suspend fun markAllNotificationsRead(): Response<ApiEnvelope<Unit>>
 }

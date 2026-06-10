@@ -230,6 +230,21 @@ class BankRepository(
         response.body()!!.prices.map { row -> row[0].toLong() to row[1] }
     }
 
+    // ── Notifications ────────────────────────────────────────────────────────
+
+    suspend fun getNotifications(): Result<List<AppNotification>> = runCatching {
+        if (useMockData) emptyList()
+        else apiService.getNotifications().bodyOrThrow()
+    }
+
+    suspend fun markNotificationRead(id: Int): Result<Unit> = runCatching {
+        if (!useMockData) apiService.markNotificationRead(id).bodyOrThrow()
+    }
+
+    suspend fun markAllNotificationsRead(): Result<Unit> = runCatching {
+        if (!useMockData) apiService.markAllNotificationsRead().bodyOrThrow()
+    }
+
     // ── KYC ─────────────────────────────────────────────────────────────────
 
     suspend fun getKycStatus(): Result<KycStatusResponse> = runCatching {
