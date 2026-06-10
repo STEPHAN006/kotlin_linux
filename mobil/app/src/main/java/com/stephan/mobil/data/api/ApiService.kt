@@ -1,12 +1,20 @@
 package com.stephan.mobil.data.api
 
 import com.stephan.mobil.data.model.*
+import okhttp3.MultipartBody
+import okhttp3.RequestBody
+import okhttp3.ResponseBody
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
+import retrofit2.http.Multipart
+import retrofit2.http.PATCH
 import retrofit2.http.POST
+import retrofit2.http.Part
 import retrofit2.http.Path
+import retrofit2.http.Query
+import retrofit2.http.Streaming
 
 interface ApiService {
     @POST("login")
@@ -49,32 +57,49 @@ interface ApiService {
     suspend fun generateQr(@Body request: QrGenerateRequest): Response<ApiEnvelope<QrData>>
 
     @POST("qr/scan")
-    suspend fun scanQr(@Body request: QrScanRequest): Response<ApiEnvelope<Map<String, Any>>>
+    suspend fun scanQr(@Body request: QrScanRequest): Response<ApiEnvelope<QrScanResult>>
 
     @POST("qr/pay")
     suspend fun payQr(@Body request: QrPayRequest): Response<ApiEnvelope<TransferData>>
 
-    @GET("user")
-    suspend fun getUser(): Response<ApiEnvelope<User>>
+    // Support tickets
+    @GET("support")
+    suspend fun getSupportTickets(): Response<ApiEnvelope<List<SupportTicket>>>
 
-    @POST("logout")
-    suspend fun logout(): Response<ApiEnvelope<Unit>>
+    @POST("support")
+    suspend fun createSupportTicket(@Body request: CreateTicketRequest): Response<ApiEnvelope<Map<String, Int>>>
 
-    @GET("notifications")
-    suspend fun getNotifications(): Response<ApiEnvelope<List<AppNotification>>>
+    @GET("support/{id}")
+    suspend fun getSupportTicket(@Path("id") id: Int): Response<ApiEnvelope<SupportTicketDetail>>
 
-    @POST("notifications/{id}/read")
-    suspend fun markNotificationRead(@Path("id") id: Int): Response<ApiEnvelope<Unit>>
+    @Multipart
+    @POST("support/{id}/messages")
+    suspend fun addSupportMessage(
+        @Path("id") ticketId: Int,
+        @Part("message") message: RequestBody,
+        @Part attachments: List<MultipartBody.Part>
+    ): Response<ApiEnvelope<Map<String, Int>>>
 
-    @POST("notifications/read-all")
-    suspend fun markAllNotificationsRead(): Response<ApiEnvelope<Unit>>
+    @PATCH("support/{id}/close")
+    suspend fun closeSupportTicket(@Path("id") id: Int): Response<ApiEnvelope<Unit>>
 
-    @GET("support/ticket")
-    suspend fun getSupportTicket(): Response<ApiEnvelope<SupportTicket>>
+    @Streaming
+    @GET("statements/monthly")
+    suspend fun downloadStatement(@Query("account_id") accountId: Int): Response<ResponseBody>
 
-    @POST("support/ticket/{ticketId}/messages")
-    suspend fun sendSupportMessage(
-        @Path("ticketId") ticketId: Int,
-        @Body request: SendMessageRequest
-    ): Response<ApiEnvelope<SupportTicket>>
+    @Multipart
+    @POST("profile/avatar")
+    suspend fun uploadAvatar(@Part avatar: MultipartBody.Part): Response<ApiEnvelope<Map<String, String?>>>
+
+    // KYC / Identity verification
+    @GET("kyc/status")
+    suspend fun getKycStatus(): Response<ApiEnvelope<KycStatusResponse>>
+
+    @Multipart
+    @POST("kyc/submit")
+    suspend fun submitKyc(
+        @Part("cin_full_name") cinFullName: RequestBody,
+        @Part cinRecto: MultipartBody.Part,
+        @Part cinVerso: MultipartBody.Part
+    ): Response<ApiEnvelope<Map<String, String>>>
 }

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\AccountController;
+use App\Http\Controllers\Api\KycController;
 use App\Http\Controllers\Api\TransactionController;
 use App\Http\Controllers\Api\AdminController;
 use App\Http\Controllers\Api\BeneficiaryController;
@@ -59,6 +60,11 @@ Route::middleware(ForceJsonResponse::class)->group(function () {
         // Authentication
         Route::post('/logout', [AuthController::class, 'logout']);
         Route::get('/user', [AuthController::class, 'user']);
+        Route::post('/profile/avatar', [AuthController::class, 'uploadAvatar']);
+
+        // Identity verification (KYC)
+        Route::get('/kyc/status', [KycController::class, 'status']);
+        Route::post('/kyc/submit', [KycController::class, 'submit']);
 
         // Accounts & Balance
         Route::get('/balance', [AccountController::class, 'balance']);

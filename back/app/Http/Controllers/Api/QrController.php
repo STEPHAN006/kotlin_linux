@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\TransferResource;
+use App\Models\Account;
 use App\Services\TransferService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -44,10 +45,19 @@ class QrController extends Controller
 
         abort_if(($decoded['type'] ?? null) !== 'bank_payment', 422, 'QR code invalide.');
 
+        $account = Account::with('user')->findOrFail((int) $decoded['account_id']);
+        $masked  = '•••• ' . substr($account->account_number, -4);
+
         return response()->json([
             'success' => true,
-            'message' => 'QR code valide. Confirmez avec votre PIN dans l application.',
-            'data' => $decoded,
+            'message' => 'QR code valide.',
+            'data' => [
+                'payload'          => $validated['payload'],
+                'recipient_name'   => $account->user->name,
+                'account_masked'   => $masked,
+                'suggested_amount' => $decoded['amount'] ?? null,
+                'currency'         => $decoded['currency'] ?? 'MGA',
+            ],
         ]);
     }
 

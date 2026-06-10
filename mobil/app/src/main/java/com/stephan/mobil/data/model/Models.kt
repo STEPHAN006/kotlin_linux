@@ -28,7 +28,16 @@ data class User(
     val id: Int,
     val name: String,
     val email: String,
-    val phone: String? = null
+    val phone: String? = null,
+    @SerializedName("avatar_url") val avatarUrl: String? = null,
+    val role: String? = null,
+    @SerializedName("kyc_status") val kycStatus: String = "none"
+)
+
+data class KycStatusResponse(
+    val status: String,
+    @SerializedName("rejection_reason") val rejectionReason: String? = null,
+    @SerializedName("submitted_at") val submittedAt: String? = null
 )
 
 data class BalanceResponse(
@@ -126,26 +135,56 @@ data class QrPayRequest(
 )
 data class QrData(val payload: String, val display: Map<String, Any>?)
 
-data class AppNotification(
-    val id: Int,
-    val title: String,
-    val body: String,
-    val read: Boolean,
-    @SerializedName("created_at") val createdAt: String
+data class QrScanResult(
+    val payload: String,
+    @SerializedName("recipient_name")   val recipientName: String,
+    @SerializedName("account_masked")   val accountMasked: String,
+    @SerializedName("suggested_amount") val suggestedAmount: Double?,
+    val currency: String = "MGA"
 )
 
-data class SupportMessage(
-    val id: Int,
-    val sender: String,
-    val message: String,
-    @SerializedName("created_at") val createdAt: String
-)
-
+// Support Tickets
 data class SupportTicket(
     val id: Int,
     val subject: String,
     val status: String,
-    val messages: List<SupportMessage>
+    val priority: String,
+    val category: String,
+    @SerializedName("message_count") val messageCount: Int = 0,
+    @SerializedName("last_message") val lastMessage: String? = null,
+    @SerializedName("created_at") val createdAt: String? = null
 )
 
-data class SendMessageRequest(val message: String)
+data class SupportMessage(
+    val id: Int,
+    val message: String,
+    @SerializedName("is_from_agent") val isFromAgent: Boolean,
+    @SerializedName("sender_name") val senderName: String,
+    val attachments: List<SupportAttachment> = emptyList(),
+    @SerializedName("created_at") val createdAt: String? = null
+)
+
+data class SupportAttachment(
+    val id: Int,
+    @SerializedName("original_name") val originalName: String,
+    val url: String,
+    @SerializedName("mime_type") val mimeType: String,
+    val size: Long
+)
+
+data class SupportTicketDetail(
+    val id: Int,
+    val subject: String,
+    val status: String,
+    val priority: String,
+    val category: String,
+    val messages: List<SupportMessage> = emptyList(),
+    @SerializedName("created_at") val createdAt: String? = null
+)
+
+data class CreateTicketRequest(
+    val subject: String,
+    val message: String,
+    val category: String = "general",
+    val priority: String = "medium"
+)

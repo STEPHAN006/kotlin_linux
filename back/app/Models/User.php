@@ -23,9 +23,17 @@ class User extends Authenticatable
         'name',
         'email',
         'phone',
+        'avatar',
         'password',
         'role',
         'is_active',
+        'kyc_status',
+        'cin_full_name',
+        'cin_recto',
+        'cin_verso',
+        'kyc_submitted_at',
+        'kyc_reviewed_at',
+        'kyc_rejection_reason',
     ];
 
     /**
@@ -49,12 +57,32 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_active' => 'boolean',
+            'kyc_submitted_at' => 'datetime',
+            'kyc_reviewed_at' => 'datetime',
         ];
     }
 
     /**
      * Check if the user is an admin.
      */
+    public function getAvatarUrlAttribute(): ?string
+    {
+        if (!$this->avatar) return null;
+        return url('storage/' . $this->avatar);
+    }
+
+    public function getCinRectoUrlAttribute(): ?string
+    {
+        if (!$this->cin_recto) return null;
+        return url('storage/' . $this->cin_recto);
+    }
+
+    public function getCinVersoUrlAttribute(): ?string
+    {
+        if (!$this->cin_verso) return null;
+        return url('storage/' . $this->cin_verso);
+    }
+
     public function isAdmin(): bool
     {
         return $this->role === 'admin';

@@ -1,19 +1,20 @@
 package com.stephan.mobil.ui.viewmodel
 
+import android.content.Context
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.stephan.mobil.data.model.*
 import com.stephan.mobil.data.repository.BankRepository
-import com.stephan.mobil.notifications.PushNotificationWorker
+import com.stephan.mobil.ui.notifications.NotificationHelper
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 data class BankUiState(
-    val loading: Boolean = false,
-    val sessionRestored: Boolean = false,
+    val loading: Boolean = true,
     val user: User? = null,
     val balance: BalanceResponse = BalanceResponse(),
     val transactions: List<Transaction> = emptyList(),
@@ -21,32 +22,20 @@ data class BankUiState(
     val cards: List<Card> = emptyList(),
     val pendingTransfer: Transfer? = null,
     val qrPayload: String? = null,
-    val scannedQrData: Map<String, Any>? = null,
-    val paymentSuccess: Transfer? = null,
-    val notifications: List<AppNotification> = emptyList(),
-    val supportTicket: SupportTicket? = null,
-    val supportLoading: Boolean = false,
+    val qrScanResult: QrScanResult? = null,
     val message: String? = null,
     val error: String? = null,
-    val mockMode: Boolean = true
+    val mockMode: Boolean = true,
+    val kycRejectionReason: String? = null,
+    val kycSubmitting: Boolean = false
 )
 
-class BankViewModel(private val repository: BankRepository) : ViewModel() {
+class BankViewModel(private val repository: BankRepository, private val appContext: Context? = null) : ViewModel() {
     private val _uiState = MutableStateFlow(BankUiState(mockMode = repository.useMockData))
     val uiState: StateFlow<BankUiState> = _uiState.asStateFlow()
 
     init {
-        viewModelScope.launch {
-            repository.restoreSession().fold(
-                onSuccess = { user ->
-                    _uiState.value = _uiState.value.copy(user = user, sessionRestored = true)
-                    refreshAll()
-                },
-                onFailure = {
-                    _uiState.value = _uiState.value.copy(loading = false, sessionRestored = true)
-                }
-            )
-        }
+        refreshAll()
     }
 
     fun setMockMode(enabled: Boolean) {
@@ -58,9 +47,12 @@ class BankViewModel(private val repository: BankRepository) : ViewModel() {
     fun login(email: String, password: String) = viewModelScope.launch {
         repository.login(email, password).fold(
             onSuccess = { user ->
-                _uiState.value = _uiState.value.copy(user = user, message = "Connecte")
-                // Lance le worker de push dès le login
-                repository.appContext?.let { PushNotificationWorker.schedule(it) }
+                val kycInfo = if (!repository.useMockData) repository.getKycStatus().getOrNull() else null
+                _uiState.value = _uiState.value.copy(
+                    user = if (kycInfo != null) user.copy(kycStatus = kycInfo.status) else user,
+                    kycRejectionReason = kycInfo?.rejectionReason,
+                    message = "Connecte"
+                )
             },
             onFailure = { _uiState.value = _uiState.value.copy(error = it.message) }
         )
@@ -69,10 +61,7 @@ class BankViewModel(private val repository: BankRepository) : ViewModel() {
 
     fun register(name: String, email: String, phone: String, password: String) = viewModelScope.launch {
         repository.register(name, email, phone, password).fold(
-            onSuccess = { user ->
-                _uiState.value = _uiState.value.copy(user = user, message = "Compte cree")
-                repository.appContext?.let { PushNotificationWorker.schedule(it) }
-            },
+            onSuccess = { _uiState.value = _uiState.value.copy(user = it, message = "Compte cree") },
             onFailure = { _uiState.value = _uiState.value.copy(error = it.message) }
         )
         refreshAll()
@@ -121,13 +110,31 @@ class BankViewModel(private val repository: BankRepository) : ViewModel() {
     fun createTransfer(senderId: Int, receiverId: Int, amount: Double, note: String) = viewModelScope.launch {
         repository.transfer(TransferRequest(senderId, receiverId, amount, note.ifBlank { null })).fold(
             onSuccess = {
+                val amountStr = String.format("%,.0f", amount)
+                appContext?.let { ctx ->
+                    NotificationHelper.notifyTransfer(ctx, amountStr, it.transfer.status)
+                }
                 _uiState.value = _uiState.value.copy(
                     pendingTransfer = if (it.otpRequired) it.transfer else null,
                     message = if (it.otpRequired) "OTP requis: utilise 123456 en mock, ou lis laravel.log en API" else "Virement execute"
                 )
                 refreshAll()
-                // Poll immédiat pour la notif push
-                if (!it.otpRequired) repository.appContext?.let { ctx -> PushNotificationWorker.pollNow(ctx) }
+            },
+            onFailure = { _uiState.value = _uiState.value.copy(error = it.message) }
+        )
+    }
+
+    fun verifyOtp(otp: String) = viewModelScope.launch {
+        val reference = _uiState.value.pendingTransfer?.reference ?: return@launch
+        val amount = _uiState.value.pendingTransfer?.amount ?: 0.0
+        repository.verifyOtp(reference, otp).fold(
+            onSuccess = {
+                val amountStr = String.format("%,.0f", amount)
+                appContext?.let { ctx ->
+                    NotificationHelper.notifyTransfer(ctx, amountStr, "completed")
+                }
+                _uiState.value = _uiState.value.copy(pendingTransfer = null, message = "OTP valide")
+                refreshAll()
             },
             onFailure = { _uiState.value = _uiState.value.copy(error = it.message) }
         )
@@ -163,25 +170,29 @@ class BankViewModel(private val repository: BankRepository) : ViewModel() {
             _uiState.value = _uiState.value.copy(error = "QR payload vide ou invalide")
             return@launch
         }
+        _uiState.value = _uiState.value.copy(loading = true)
         repository.scanQr(payload).fold(
-            onSuccess = { data ->
-                _uiState.value = _uiState.value.copy(
-                    scannedQrData = data,
-                    message = "QR valide: prêt pour paiement"
-                )
+            onSuccess = { result ->
+                _uiState.value = _uiState.value.copy(loading = false, qrScanResult = result)
             },
-            onFailure = { _uiState.value = _uiState.value.copy(error = it.message) }
+            onFailure = { _uiState.value = _uiState.value.copy(loading = false, error = "QR invalide: ${it.message}") }
         )
+    }
+
+    fun clearQrScan() {
+        _uiState.value = _uiState.value.copy(qrScanResult = null)
     }
 
     fun payQr(senderAccountId: Int, payload: String, amount: Double) = viewModelScope.launch {
         repository.payQr(senderAccountId, payload, amount).fold(
             onSuccess = {
+                val amountStr = String.format("%,.0f", amount)
+                appContext?.let { ctx ->
+                    NotificationHelper.notifyQrPayment(ctx, amountStr)
+                }
                 _uiState.value = _uiState.value.copy(
                     pendingTransfer = if (it.otpRequired) it.transfer else null,
-                    paymentSuccess = if (!it.otpRequired) it.transfer else null,
-                    scannedQrData = null,
-                    message = if (it.otpRequired) "OTP requis pour finaliser le paiement QR" else null
+                    message = if (it.otpRequired) "OTP requis pour finaliser le paiement QR" else "Paiement QR envoye"
                 )
                 refreshAll()
             },
@@ -189,66 +200,78 @@ class BankViewModel(private val repository: BankRepository) : ViewModel() {
         )
     }
 
-    fun clearPaymentSuccess() {
-        _uiState.value = _uiState.value.copy(paymentSuccess = null)
-    }
-
-    fun loadNotifications() = viewModelScope.launch {
-        repository.getNotifications().fold(
-            onSuccess = { _uiState.value = _uiState.value.copy(notifications = it) },
-            onFailure = { /* silently ignore */ }
-        )
-    }
-
-    fun markAllNotificationsRead() = viewModelScope.launch {
-        repository.markAllNotificationsRead()
-        _uiState.value = _uiState.value.copy(
-            notifications = _uiState.value.notifications.map { it.copy(read = true) }
-        )
-    }
-
-    fun loadSupportTicket() = viewModelScope.launch {
-        _uiState.value = _uiState.value.copy(supportLoading = true)
-        repository.getSupportTicket().fold(
-            onSuccess = { _uiState.value = _uiState.value.copy(supportTicket = it, supportLoading = false) },
-            onFailure = { _uiState.value = _uiState.value.copy(supportLoading = false, error = it.message) }
-        )
-    }
-
-    fun sendSupportMessage(message: String) = viewModelScope.launch {
-        val ticketId = _uiState.value.supportTicket?.id ?: return@launch
-        _uiState.value = _uiState.value.copy(supportLoading = true)
-        repository.sendSupportMessage(ticketId, message).fold(
-            onSuccess = { _uiState.value = _uiState.value.copy(supportTicket = it, supportLoading = false) },
-            onFailure = { _uiState.value = _uiState.value.copy(supportLoading = false, error = it.message) }
-        )
-    }
-
-    fun verifyOtp(otp: String) = viewModelScope.launch {
-        val reference = _uiState.value.pendingTransfer?.reference ?: return@launch
-        repository.verifyOtp(reference, otp).fold(
-            onSuccess = {
-                _uiState.value = _uiState.value.copy(pendingTransfer = null, message = "OTP valide")
-                refreshAll()
-                repository.appContext?.let { PushNotificationWorker.pollNow(it) }
+    fun uploadAvatar(uri: Uri) = viewModelScope.launch {
+        repository.uploadAvatar(uri).fold(
+            onSuccess = { avatarUrl ->
+                val updatedUser = _uiState.value.user?.copy(avatarUrl = avatarUrl)
+                _uiState.value = _uiState.value.copy(user = updatedUser, message = "Photo de profil mise à jour")
             },
-            onFailure = { _uiState.value = _uiState.value.copy(error = it.message) }
+            onFailure = { _uiState.value = _uiState.value.copy(error = "Échec upload: ${it.message}") }
         )
     }
 
-    fun logout(context: android.content.Context) = viewModelScope.launch {
-        PushNotificationWorker.cancel(context)
-        runCatching { repository.logout() }
-        com.stephan.mobil.security.SecurityUtil.clearData(context)
-        _uiState.value = BankUiState(sessionRestored = true, mockMode = repository.useMockData)
+    fun downloadStatement(context: Context, accountId: Int) = viewModelScope.launch {
+        repository.downloadStatement(accountId).fold(
+            onSuccess = { bytes ->
+                try {
+                    val fileName = "releve_scpay_${System.currentTimeMillis()}.pdf"
+                    val file = java.io.File(
+                        context.getExternalFilesDir(android.os.Environment.DIRECTORY_DOWNLOADS),
+                        fileName
+                    )
+                    file.writeBytes(bytes)
+                    val uri = androidx.core.content.FileProvider.getUriForFile(
+                        context,
+                        "${context.packageName}.provider",
+                        file
+                    )
+                    val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
+                        setDataAndType(uri, "application/pdf")
+                        addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    context.startActivity(intent)
+                    _uiState.value = _uiState.value.copy(message = "Relevé PDF téléchargé")
+                } catch (e: Exception) {
+                    _uiState.value = _uiState.value.copy(error = "Impossible d'ouvrir le PDF")
+                }
+            },
+            onFailure = { _uiState.value = _uiState.value.copy(error = "Téléchargement échoué: ${it.message}") }
+        )
+    }
+
+    fun submitKyc(cinFullName: String, cinRectoUri: Uri, cinVersoUri: Uri) = viewModelScope.launch {
+        _uiState.value = _uiState.value.copy(kycSubmitting = true, error = null)
+        repository.submitKyc(cinFullName, cinRectoUri, cinVersoUri).fold(
+            onSuccess = {
+                val updatedUser = _uiState.value.user?.copy(kycStatus = "pending")
+                _uiState.value = _uiState.value.copy(
+                    user = updatedUser,
+                    kycSubmitting = false,
+                    message = "Documents envoyés. Votre vérification est en cours."
+                )
+            },
+            onFailure = {
+                _uiState.value = _uiState.value.copy(kycSubmitting = false, error = it.message)
+            }
+        )
     }
 
     fun consumeMessages() {
         _uiState.value = _uiState.value.copy(message = null, error = null)
     }
+
+    fun logout() = viewModelScope.launch {
+        repository.logout()
+        _uiState.value = BankUiState(mockMode = repository.useMockData)
+    }
 }
 
-class BankViewModelFactory(private val repository: BankRepository) : ViewModelProvider.Factory {
+class BankViewModelFactory(
+    private val repository: BankRepository,
+    private val appContext: Context? = null
+) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
-    override fun <T : ViewModel> create(modelClass: Class<T>): T = BankViewModel(repository) as T
+    override fun <T : ViewModel> create(modelClass: Class<T>): T =
+        BankViewModel(repository, appContext) as T
 }

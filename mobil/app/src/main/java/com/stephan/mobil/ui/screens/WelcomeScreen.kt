@@ -2,8 +2,11 @@ package com.stephan.mobil.ui.screens
 
 import android.app.Activity
 import android.net.Uri
-import android.widget.VideoView
-import android.media.MediaPlayer
+import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.AspectRatioFrameLayout
+import androidx.media3.ui.PlayerView
 import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -61,19 +64,63 @@ fun WelcomeScreen(
         onDispose { }
     }
 
+    // ExoPlayer ping-pong — forward then reverse, no cuts
+    val context = LocalContext.current
+    val stepMs = 33L // ~30 fps reverse
+    val exoPlayer = remember {
+        ExoPlayer.Builder(context).build().apply {
+            val uri = Uri.parse("android.resource://${context.packageName}/${R.raw.bg_video}")
+            setMediaItem(MediaItem.fromUri(uri))
+            volume = 0f
+            repeatMode = Player.REPEAT_MODE_OFF
+            prepare()
+        }
+    }
+    var isReversing by remember { mutableStateOf(false) }
+
+    // ExoPlayer lifecycle — release on leave
+    DisposableEffect(exoPlayer) {
+        val listener = object : Player.Listener {
+            override fun onPlaybackStateChanged(state: Int) {
+                if (state == Player.STATE_ENDED) {
+                    isReversing = true
+                }
+            }
+        }
+        exoPlayer.addListener(listener)
+        exoPlayer.play()
+        onDispose {
+            exoPlayer.removeListener(listener)
+            exoPlayer.release()
+        }
+    }
+
+    // Reverse loop: tick every stepMs, seek back, restart forward at position 0
+    LaunchedEffect(isReversing) {
+        if (isReversing) {
+            while (true) {
+                kotlinx.coroutines.delay(stepMs)
+                val next = exoPlayer.currentPosition - stepMs
+                if (next > 0) {
+                    exoPlayer.seekTo(next)
+                } else {
+                    exoPlayer.seekTo(0)
+                    exoPlayer.play()
+                    isReversing = false
+                    break
+                }
+            }
+        }
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
-        // Video View Background Loop
+        // PlayerView — keeps last frame visible during seeks (no black flash)
         AndroidView(
             factory = { ctx ->
-                VideoView(ctx).apply {
-                    val uri = Uri.parse("android.resource://${ctx.packageName}/${R.raw.bg_video}")
-                    setVideoURI(uri)
-                    setOnPreparedListener { mp ->
-                        mp.isLooping = true
-                        mp.setVolume(0f, 0f) // Mute audio
-                        mp.setVideoScalingMode(MediaPlayer.VIDEO_SCALING_MODE_SCALE_TO_FIT_WITH_CROPPING)
-                        start()
-                    }
+                PlayerView(ctx).apply {
+                    player = exoPlayer
+                    useController = false
+                    resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
                 }
             },
             modifier = Modifier.fillMaxSize()
