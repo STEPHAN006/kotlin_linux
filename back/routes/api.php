@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\AccountController;
+use App\Http\Controllers\Api\CryptoController;
 use App\Http\Controllers\Api\KycController;
 use App\Http\Controllers\Api\TransactionController;
 use App\Http\Controllers\Api\AdminController;
@@ -61,6 +62,13 @@ Route::middleware(ForceJsonResponse::class)->group(function () {
         Route::post('/logout', [AuthController::class, 'logout']);
         Route::get('/user', [AuthController::class, 'user']);
         Route::post('/profile/avatar', [AuthController::class, 'uploadAvatar']);
+
+        // Crypto wallets & trading
+        Route::get('/crypto/wallets', [CryptoController::class, 'wallets']);
+        Route::post('/crypto/buy', [CryptoController::class, 'buy']);
+        Route::post('/crypto/sell', [CryptoController::class, 'sell']);
+        Route::post('/crypto/send', [CryptoController::class, 'send']);
+        Route::get('/crypto/transactions', [CryptoController::class, 'transactions']);
 
         // Identity verification (KYC)
         Route::get('/kyc/status', [KycController::class, 'status']);

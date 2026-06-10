@@ -43,7 +43,7 @@ Route::prefix('admin')->middleware(AdminWebAuth::class)->name('admin.')->group(f
     Route::patch('/cards/{card}/limit', [AdminCardsController::class, 'updateLimit'])->name('cards.limit');
 
     // Support
-    Route::get('/support', [AdminSupportController::class, 'index'])->name('support');
+    Route::get('/support', [AdminSupportController::class, 'index'])->name('support.index');
     Route::get('/support/{ticket}', [AdminSupportController::class, 'show'])->name('support.show');
     Route::post('/support/{ticket}/reply', [AdminSupportController::class, 'reply'])->name('support.reply');
 
