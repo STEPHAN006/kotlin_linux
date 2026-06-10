@@ -405,7 +405,6 @@ private fun KycSectionCard(
 
 @Composable
 private fun KycImagePicker(uri: Uri?, label: String, onClick: () -> Unit) {
-    val context = LocalContext.current
     if (uri != null) {
         Box(
             modifier = Modifier

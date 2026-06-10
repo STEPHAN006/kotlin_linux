@@ -188,3 +188,82 @@ data class CreateTicketRequest(
     val category: String = "general",
     val priority: String = "medium"
 )
+
+// ─── CoinGecko market data ────────────────────────────────────────────────────
+
+data class SparklineData(val price: List<Double> = emptyList())
+
+data class CoinMarketData(
+    val id: String,
+    val symbol: String,
+    val name: String,
+    val image: String,
+    @SerializedName("current_price") val currentPrice: Double = 0.0,
+    @SerializedName("price_change_percentage_24h") val change24h: Double? = null,
+    @SerializedName("market_cap") val marketCap: Long? = null,
+    @SerializedName("total_volume") val volume: Long? = null,
+    @SerializedName("sparkline_in_7d") val sparkline: SparklineData? = null
+)
+
+data class CoinChartData(
+    val prices: List<List<Double>> = emptyList()
+)
+
+// ─── Backend crypto wallet / trade ───────────────────────────────────────────
+
+data class CryptoWallet(
+    val symbol: String,
+    val name: String,
+    @SerializedName("coin_id") val coinId: String,
+    val address: String,
+    val balance: Double = 0.0
+)
+
+data class CryptoBuyRequest(
+    val symbol: String,
+    @SerializedName("amount_mga") val amountMga: Double,
+    @SerializedName("price_usd") val priceUsd: Double,
+    @SerializedName("mga_per_usd") val mgaPerUsd: Double
+)
+
+data class CryptoSellRequest(
+    val symbol: String,
+    @SerializedName("crypto_amount") val cryptoAmount: Double,
+    @SerializedName("price_usd") val priceUsd: Double,
+    @SerializedName("mga_per_usd") val mgaPerUsd: Double
+)
+
+data class CryptoSendRequest(
+    val symbol: String,
+    @SerializedName("crypto_amount") val cryptoAmount: Double,
+    @SerializedName("to_address") val toAddress: String,
+    @SerializedName("price_usd") val priceUsd: Double,
+    @SerializedName("mga_per_usd") val mgaPerUsd: Double
+)
+
+data class CryptoTradeResult(
+    val symbol: String? = null,
+    @SerializedName("crypto_amount") val cryptoAmount: Double? = null,
+    @SerializedName("total_mga") val totalMga: Double? = null,
+    @SerializedName("tx_hash") val txHash: String? = null
+)
+
+data class AppNotification(
+    val id: Int,
+    val title: String,
+    val body: String,
+    val read: Boolean = false,
+    @SerializedName("created_at") val createdAt: String? = null
+)
+
+data class CryptoTxn(
+    val id: Int,
+    val type: String,
+    val symbol: String,
+    val amount: Double,
+    @SerializedName("price_usd") val priceUsd: Double,
+    @SerializedName("total_mga") val totalMga: Double,
+    @SerializedName("to_address") val toAddress: String? = null,
+    @SerializedName("tx_hash") val txHash: String? = null,
+    @SerializedName("created_at") val createdAt: String? = null
+)

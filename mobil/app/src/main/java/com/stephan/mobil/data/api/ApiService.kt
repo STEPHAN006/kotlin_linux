@@ -102,4 +102,24 @@ interface ApiService {
         @Part cinRecto: MultipartBody.Part,
         @Part cinVerso: MultipartBody.Part
     ): Response<ApiEnvelope<Map<String, String>>>
+
+    // Crypto wallets & trading
+    @GET("crypto/wallets")
+    suspend fun getCryptoWallets(): Response<ApiEnvelope<List<CryptoWallet>>>
+
+    @POST("crypto/buy")
+    suspend fun buyCrypto(@Body request: CryptoBuyRequest): Response<ApiEnvelope<CryptoTradeResult>>
+
+    @POST("crypto/sell")
+    suspend fun sellCrypto(@Body request: CryptoSellRequest): Response<ApiEnvelope<CryptoTradeResult>>
+
+    @POST("crypto/send")
+    suspend fun sendCrypto(@Body request: CryptoSendRequest): Response<ApiEnvelope<CryptoTradeResult>>
+
+    @GET("crypto/transactions")
+    suspend fun getCryptoTransactions(): Response<ApiEnvelope<Map<String, Any>>>
+
+    // Push notifications polling
+    @GET("notifications")
+    suspend fun getNotifications(): Response<ApiEnvelope<List<AppNotification>>>
 }

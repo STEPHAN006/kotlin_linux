@@ -27,7 +27,12 @@ data class BankUiState(
     val error: String? = null,
     val mockMode: Boolean = true,
     val kycRejectionReason: String? = null,
-    val kycSubmitting: Boolean = false
+    val kycSubmitting: Boolean = false,
+    val cryptoWallets: List<CryptoWallet> = emptyList(),
+    val cryptoMarkets: List<CoinMarketData> = emptyList(),
+    val cryptoChart: List<Pair<Long, Double>> = emptyList(),
+    val cryptoLoading: Boolean = false,
+    val mgaPerUsd: Double = 4500.0
 )
 
 class BankViewModel(private val repository: BankRepository, private val appContext: Context? = null) : ViewModel() {
@@ -239,6 +244,65 @@ class BankViewModel(private val repository: BankRepository, private val appConte
             onFailure = { _uiState.value = _uiState.value.copy(error = "Téléchargement échoué: ${it.message}") }
         )
     }
+
+    // ── Crypto ──────────────────────────────────────────────────────────────
+
+    fun loadCrypto() = viewModelScope.launch {
+        _uiState.value = _uiState.value.copy(cryptoLoading = true)
+        val wallets = repository.getCryptoWallets()
+        val markets = repository.getCoinMarkets()
+        _uiState.value = _uiState.value.copy(
+            cryptoLoading = false,
+            cryptoWallets = wallets.getOrDefault(emptyList()),
+            cryptoMarkets = markets.getOrDefault(emptyList()),
+            error = if (markets.isFailure) "Impossible de charger les prix crypto" else null
+        )
+    }
+
+    fun loadCryptoChart(coinId: String, days: String = "1") = viewModelScope.launch {
+        repository.getCoinChart(coinId, days).fold(
+            onSuccess = { _uiState.value = _uiState.value.copy(cryptoChart = it) },
+            onFailure = { _uiState.value = _uiState.value.copy(cryptoChart = emptyList()) }
+        )
+    }
+
+    fun buyCrypto(symbol: String, amountMga: Double, priceUsd: Double) = viewModelScope.launch {
+        val mga = _uiState.value.mgaPerUsd
+        repository.buyCrypto(symbol, amountMga, priceUsd, mga).fold(
+            onSuccess = {
+                _uiState.value = _uiState.value.copy(message = "Achat $symbol effectué ✓")
+                loadCrypto()
+                refreshAll()
+            },
+            onFailure = { _uiState.value = _uiState.value.copy(error = it.message) }
+        )
+    }
+
+    fun sellCrypto(symbol: String, cryptoAmount: Double, priceUsd: Double) = viewModelScope.launch {
+        val mga = _uiState.value.mgaPerUsd
+        repository.sellCrypto(symbol, cryptoAmount, priceUsd, mga).fold(
+            onSuccess = {
+                val totalMga = it.totalMga ?: (cryptoAmount * priceUsd * mga)
+                _uiState.value = _uiState.value.copy(
+                    message = "Vente $symbol → ${String.format("%,.0f", totalMga)} MGA ✓"
+                )
+                loadCrypto()
+                refreshAll()
+            },
+            onFailure = { _uiState.value = _uiState.value.copy(error = it.message) }
+        )
+    }
+
+    fun sendCrypto(symbol: String, cryptoAmount: Double, toAddress: String, priceUsd: Double) = viewModelScope.launch {
+        val mga = _uiState.value.mgaPerUsd
+        repository.sendCrypto(symbol, cryptoAmount, toAddress, priceUsd, mga).fold(
+            onSuccess = { _uiState.value = _uiState.value.copy(message = "Envoi $symbol confirmé ✓") },
+            onFailure = { _uiState.value = _uiState.value.copy(error = it.message) }
+        )
+        loadCrypto()
+    }
+
+    // ── KYC ─────────────────────────────────────────────────────────────────
 
     fun submitKyc(cinFullName: String, cinRectoUri: Uri, cinVersoUri: Uri) = viewModelScope.launch {
         _uiState.value = _uiState.value.copy(kycSubmitting = true, error = null)
