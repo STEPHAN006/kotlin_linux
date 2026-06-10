@@ -3,6 +3,7 @@ package com.stephan.mobil.data.repository
 import android.content.Context
 import android.net.Uri
 import com.stephan.mobil.data.api.ApiService
+import com.stephan.mobil.data.api.CoinGeckoClient
 import com.stephan.mobil.data.model.*
 import com.stephan.mobil.security.SecurityUtil
 import kotlinx.coroutines.delay
@@ -195,6 +196,42 @@ class BankRepository(
         }
     }
 
+    // ── Crypto ──────────────────────────────────────────────────────────────
+
+    suspend fun getCryptoWallets(): Result<List<CryptoWallet>> = runCatching {
+        if (useMockData) emptyList()
+        else apiService.getCryptoWallets().bodyOrThrow()
+    }
+
+    suspend fun buyCrypto(symbol: String, amountMga: Double, priceUsd: Double, mgaPerUsd: Double): Result<CryptoTradeResult> = runCatching {
+        if (useMockData) CryptoTradeResult(symbol, amountMga / (priceUsd * mgaPerUsd), amountMga)
+        else apiService.buyCrypto(CryptoBuyRequest(symbol, amountMga, priceUsd, mgaPerUsd)).bodyOrThrow()
+    }
+
+    suspend fun sellCrypto(symbol: String, cryptoAmount: Double, priceUsd: Double, mgaPerUsd: Double): Result<CryptoTradeResult> = runCatching {
+        if (useMockData) CryptoTradeResult(symbol, cryptoAmount, cryptoAmount * priceUsd * mgaPerUsd)
+        else apiService.sellCrypto(CryptoSellRequest(symbol, cryptoAmount, priceUsd, mgaPerUsd)).bodyOrThrow()
+    }
+
+    suspend fun sendCrypto(symbol: String, cryptoAmount: Double, toAddress: String, priceUsd: Double, mgaPerUsd: Double): Result<CryptoTradeResult> = runCatching {
+        if (useMockData) CryptoTradeResult(symbol, cryptoAmount, null, "0xmock_hash")
+        else apiService.sendCrypto(CryptoSendRequest(symbol, cryptoAmount, toAddress, priceUsd, mgaPerUsd)).bodyOrThrow()
+    }
+
+    suspend fun getCoinMarkets(): Result<List<CoinMarketData>> = runCatching {
+        val response = CoinGeckoClient.api.getMarkets(ids = CoinGeckoClient.COIN_IDS)
+        require(response.isSuccessful && response.body() != null) { "CoinGecko error: ${response.code()}" }
+        response.body()!!
+    }
+
+    suspend fun getCoinChart(coinId: String, days: String): Result<List<Pair<Long, Double>>> = runCatching {
+        val response = CoinGeckoClient.api.getChart(coinId, days = days)
+        require(response.isSuccessful && response.body() != null) { "CoinGecko chart error: ${response.code()}" }
+        response.body()!!.prices.map { row -> row[0].toLong() to row[1] }
+    }
+
+    // ── KYC ─────────────────────────────────────────────────────────────────
+
     suspend fun getKycStatus(): Result<KycStatusResponse> = runCatching {
         if (useMockData) KycStatusResponse("none")
         else apiService.getKycStatus().bodyOrThrow()
@@ -219,7 +256,7 @@ class BankRepository(
     }
 
     fun logout() {
-        SecurityUtil.clearToken(context)
+        SecurityUtil.clearData(context)
         useMockData = false
     }
 
