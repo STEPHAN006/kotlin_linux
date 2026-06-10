@@ -10,6 +10,7 @@ use App\Services\AuthService;
 use App\Services\AccountService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class AuthController extends Controller
 {
@@ -94,6 +95,33 @@ class AuthController extends Controller
         return response()->json([
             'success' => true,
             'data' => new UserResource($user),
+        ]);
+    }
+
+    /**
+     * Upload or replace the authenticated user's avatar.
+     *
+     * POST /api/profile/avatar
+     */
+    public function uploadAvatar(Request $request): JsonResponse
+    {
+        $request->validate([
+            'avatar' => ['required', 'image', 'mimes:jpeg,png,jpg,webp', 'max:4096'],
+        ]);
+
+        $user = $request->user();
+
+        if ($user->avatar) {
+            Storage::disk('public')->delete($user->avatar);
+        }
+
+        $path = $request->file('avatar')->store('avatars', 'public');
+        $user->update(['avatar' => $path]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Photo de profil mise à jour.',
+            'data' => ['avatar_url' => $user->avatar_url],
         ]);
     }
 }

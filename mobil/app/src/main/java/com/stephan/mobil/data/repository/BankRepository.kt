@@ -1,16 +1,19 @@
 package com.stephan.mobil.data.repository
 
 import android.content.Context
+import android.net.Uri
 import com.stephan.mobil.data.api.ApiService
 import com.stephan.mobil.data.model.*
 import com.stephan.mobil.security.SecurityUtil
 import kotlinx.coroutines.delay
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.toRequestBody
 
 class BankRepository(
     private val apiService: ApiService,
     private val context: Context
 ) {
-    val appContext: Context get() = context.applicationContext
     var useMockData = false
 
     private val mockAccounts = listOf(
@@ -36,24 +39,6 @@ class BankRepository(
     private val mockCards = mutableListOf(
         Card(1, "**** **** **** 2026", "2026", "05/29", false, "virtual", 5_000_000.0)
     )
-
-    /** Restore session from saved token — called on every app start. */
-    suspend fun restoreSession(): Result<User> = runCatching {
-        if (useMockData) {
-            delay(200)
-            User(1, "Rakoto Jean", "rakoto@example.com", "+261341111111")
-        } else {
-            require(!SecurityUtil.getAuthToken(context).isNullOrBlank()) { "No saved token" }
-            val response = apiService.getUser()
-            val body = response.body()
-            require(response.isSuccessful && body != null) { "Session expirée" }
-            body.data
-        }
-    }
-
-    suspend fun logout(): Result<Unit> = runCatching {
-        if (!useMockData) apiService.logout()
-    }
 
     suspend fun login(email: String, password: String): Result<User> = runCatching {
         if (useMockData) {
@@ -160,27 +145,20 @@ class BankRepository(
     }
 
     suspend fun generateQr(accountId: Int, amount: Double?): Result<QrData> = runCatching {
-        if (useMockData) {
-            val payload = mapOf(
-                "type" to "bank_payment",
-                "account_id" to accountId,
-                "amount" to (amount ?: 0.0),
-                "currency" to "MGA",
-                "nonce" to "demo"
-            )
-            val json = com.google.gson.Gson().toJson(payload)
-            val encoded = android.util.Base64.encodeToString(json.toByteArray(Charsets.UTF_8), android.util.Base64.NO_WRAP)
-            QrData(encoded, payload)
-        } else apiService.generateQr(QrGenerateRequest(accountId, amount)).bodyOrThrow()
+        if (useMockData) QrData("eyJ0eXBlIjoiYmFua19wYXltZW50IiwiZGVtbyI6dHJ1ZX0=", mapOf("account_id" to accountId, "amount" to (amount ?: 0.0)))
+        else apiService.generateQr(QrGenerateRequest(accountId, amount)).bodyOrThrow()
     }
 
-    suspend fun scanQr(payload: String): Result<Map<String, Any>> = runCatching {
-        // Clean payload – remove extra whitespace and line breaks
+    suspend fun scanQr(payload: String): Result<QrScanResult> = runCatching {
         val cleanedPayload = payload.trim()
-        // Log payload for debugging; remove in production
-        android.util.Log.d("BankRepository", "Scanning QR payload: $cleanedPayload")
         if (useMockData) {
-            mapOf("type" to "bank_payment", "payload" to cleanedPayload, "message" to "QR code valide en mode demo")
+            QrScanResult(
+                payload        = cleanedPayload,
+                recipientName  = "Rasoa Marie (demo)",
+                accountMasked  = "•••• 8022",
+                suggestedAmount = null,
+                currency       = "MGA"
+            )
         } else {
             apiService.scanQr(QrScanRequest(cleanedPayload)).bodyOrThrow()
         }
@@ -194,43 +172,55 @@ class BankRepository(
         } else apiService.payQr(QrPayRequest(senderAccountId, payload, amount)).bodyOrThrow()
     }
 
-    private val mockNotifications = listOf(
-        AppNotification(1, "Veuillez approuver votre paiement 5 USD", "Veuillez approuver votre paiement.\n05-15 20:58", false, "2026-05-15 20:58"),
-        AppNotification(2, "Votre transaction 20,00 USD a été refusée", "Carte 1000 — solde insuffisant.\n04-15 11:56", true, "2026-04-15 11:56"),
-        AppNotification(3, "Carte activée. Vous êtes prêt", "Votre voyage de paiement sécurisé commence maintenant.\n03-07 09:32", true, "2026-03-07 09:32")
-    )
-
-    suspend fun getNotifications(): Result<List<AppNotification>> = runCatching {
-        if (useMockData) mockNotifications
-        else apiService.getNotifications().bodyOrThrow()
+    suspend fun uploadAvatar(uri: Uri): Result<String?> = runCatching {
+        val stream = context.contentResolver.openInputStream(uri)
+            ?: error("Impossible d'ouvrir l'image")
+        val bytes = stream.readBytes()
+        stream.close()
+        val mimeType = context.contentResolver.getType(uri) ?: "image/jpeg"
+        val body = bytes.toRequestBody(mimeType.toMediaTypeOrNull())
+        val part = MultipartBody.Part.createFormData("avatar", "avatar.jpg", body)
+        val response = apiService.uploadAvatar(part)
+        require(response.isSuccessful && response.body() != null) { "Erreur upload: ${response.code()}" }
+        response.body()!!.data["avatar_url"]
     }
 
-    suspend fun markAllNotificationsRead(): Result<Unit> = runCatching {
-        if (!useMockData) apiService.markAllNotificationsRead().bodyOrThrow()
-    }
-
-    suspend fun getSupportTicket(): Result<SupportTicket> = runCatching {
+    suspend fun downloadStatement(accountId: Int): Result<ByteArray> = runCatching {
         if (useMockData) {
-            SupportTicket(
-                id = 1, subject = "Support client", status = "open",
-                messages = listOf(
-                    SupportMessage(1, "admin", "Bienvenue chez SCpay ! Je suis votre assistant SCpay, ici pour vous aider.\n\nPour que je puisse vous offrir la meilleure solution, veuillez décrire votre question avec le plus de détails possible.", "2026-06-04 09:00")
-                )
-            )
-        } else apiService.getSupportTicket().bodyOrThrow()
+            "%PDF-1.4 Mock statement for demo mode".toByteArray()
+        } else {
+            val response = apiService.downloadStatement(accountId)
+            require(response.isSuccessful && response.body() != null) { "Erreur téléchargement PDF: ${response.code()}" }
+            response.body()!!.bytes()
+        }
     }
 
-    suspend fun sendSupportMessage(ticketId: Int, message: String): Result<SupportTicket> = runCatching {
+    suspend fun getKycStatus(): Result<KycStatusResponse> = runCatching {
+        if (useMockData) KycStatusResponse("none")
+        else apiService.getKycStatus().bodyOrThrow()
+    }
+
+    suspend fun submitKyc(cinFullName: String, cinRectoUri: Uri, cinVersoUri: Uri): Result<Unit> = runCatching {
         if (useMockData) {
-            SupportTicket(
-                id = ticketId, subject = "Support client", status = "open",
-                messages = listOf(
-                    SupportMessage(1, "admin", "Bienvenue chez SCpay ! Je suis votre assistant SCpay, ici pour vous aider.", "2026-06-04 09:00"),
-                    SupportMessage(2, "user", message, "2026-06-04 09:01"),
-                    SupportMessage(3, "admin", "Merci, un agent SCpay va traiter votre demande. Vous pouvez aussi consulter le Centre d'aide.", "2026-06-04 09:01")
-                )
-            )
-        } else apiService.sendSupportMessage(ticketId, SendMessageRequest(message)).bodyOrThrow()
+            delay(800)
+            return@runCatching
+        }
+        fun uriToPart(uri: Uri, name: String): MultipartBody.Part {
+            val stream = context.contentResolver.openInputStream(uri) ?: error("Impossible d'ouvrir l'image")
+            val bytes = stream.readBytes()
+            stream.close()
+            val mime = context.contentResolver.getType(uri) ?: "image/jpeg"
+            val body = bytes.toRequestBody(mime.toMediaTypeOrNull())
+            return MultipartBody.Part.createFormData(name, "$name.jpg", body)
+        }
+        val nameBody = cinFullName.toRequestBody("text/plain".toMediaTypeOrNull())
+        val response = apiService.submitKyc(nameBody, uriToPart(cinRectoUri, "cin_recto"), uriToPart(cinVersoUri, "cin_verso"))
+        require(response.isSuccessful && response.body() != null) { "Erreur soumission KYC: ${response.code()}" }
+    }
+
+    fun logout() {
+        SecurityUtil.clearToken(context)
+        useMockData = false
     }
 
     private fun <T> retrofit2.Response<ApiEnvelope<T>>.bodyOrThrow(): T {
