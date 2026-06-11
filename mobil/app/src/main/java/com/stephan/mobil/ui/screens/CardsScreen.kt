@@ -129,6 +129,7 @@ private fun CardSettingsPage(
     onBack: () -> Unit
 ) {
     val darkMode = LocalDarkMode.current
+    val brand    = LocalBrandColor.current
     val ink = if (darkMode) TextPrimary else BgSurface
     val bg = if (darkMode) BgBase else Color.White
     val cardBg = if (darkMode) BgSurfaceElevated else LightBackground
@@ -180,7 +181,7 @@ private fun CardSettingsPage(
             SettingsActionButton(
                 label = if (card.isBlocked) "Débloquer la carte" else "Bloquer la carte",
                 icon = if (card.isBlocked) Icons.Default.LockOpen else Icons.Default.Lock,
-                color = if (card.isBlocked) SemanticSuccess else BrandPrimary
+                color = if (card.isBlocked) SemanticSuccess else brand
             ) { vm.toggleCard(card.id); onBack() }
 
             Spacer(Modifier.height(12.dp))
@@ -226,6 +227,7 @@ private fun ChooseCardScreen(
     onBack: () -> Unit
 ) {
     val darkMode = LocalDarkMode.current
+    val brand    = LocalBrandColor.current
     val context = LocalContext.current
     val accountId = state.balance.accounts.firstOrNull()?.id ?: 1
     val sharedPrefs = remember { context.getSharedPreferences("card_designs", Context.MODE_PRIVATE) }
@@ -384,7 +386,7 @@ private fun ChooseCardScreen(
                         .clip(CircleShape)
                         .background(
                             if (isSelected) {
-                                if (darkMode) Color.White.copy(alpha = 0.15f) else BrandPrimary.copy(alpha = 0.14f)
+                                if (darkMode) Color.White.copy(alpha = 0.15f) else brand.copy(alpha = 0.14f)
                             } else Color.Transparent
                         )
                         .clickable { selectedDesign = index }
@@ -430,7 +432,7 @@ private fun ChooseCardScreen(
                 .heightIn(min = 54.dp),
             shape = RoundedCornerShape(14.dp),
             colors = ButtonDefaults.buttonColors(
-                containerColor = BrandPrimary,
+                containerColor = brand,
                 contentColor = Color.White
             )
         ) {
@@ -545,6 +547,7 @@ private fun CardsMainContent(
     onSettings: (Int) -> Unit = {}
 ) {
     val darkMode = LocalDarkMode.current
+    val brand    = LocalBrandColor.current
     val accountId = state.balance.accounts.firstOrNull()?.id ?: 1
     val context = LocalContext.current
     val sharedPrefs = remember { context.getSharedPreferences("card_designs", Context.MODE_PRIVATE) }
@@ -610,7 +613,7 @@ private fun CardsMainContent(
                             limitInput = ""
                         }
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary)
+                    colors = ButtonDefaults.buttonColors(containerColor = brand)
                 ) { Text("Confirmer") }
             },
             dismissButton = {
@@ -768,7 +771,7 @@ private fun CardsMainContent(
                                     .size(width = dotWidth.dp, height = 8.dp)
                                     .clip(CircleShape)
                                     .background(
-                                        if (isActive) BrandPrimary
+                                        if (isActive) brand
                                         else muted.copy(alpha = 0.35f)
                                     )
                             )

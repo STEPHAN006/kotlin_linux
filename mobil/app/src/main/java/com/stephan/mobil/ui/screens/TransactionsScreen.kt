@@ -27,6 +27,7 @@ import com.stephan.mobil.ui.viewmodel.BankUiState
 @Composable
 fun TransactionsScreen(state: BankUiState) {
     val darkMode = LocalDarkMode.current
+    val brand = LocalBrandColor.current
     var filterMode by remember { mutableStateOf("all") }
     var searchQuery by remember { mutableStateOf("") }
     var showChart by remember { mutableStateOf(false) }
@@ -38,7 +39,7 @@ fun TransactionsScreen(state: BankUiState) {
     }
 
     val pageBg = if (darkMode) BgBase else Color.White
-    val ink = if (darkMode) TextPrimary else BgSurface
+    val ink = if (darkMode) TextPrimary else Color(0xFF17181C)
     val muted = if (darkMode) TextSecondary else Color(0xFF737780)
     val fieldBg = if (darkMode) BgSurfaceElevated else LightBackground
     val chipBg = if (darkMode) BgSurfaceElevated else LightBackground
@@ -83,7 +84,7 @@ fun TransactionsScreen(state: BankUiState) {
                 Icon(
                     imageVector = if (showChart) Icons.Default.ListAlt else Icons.Default.BarChart,
                     contentDescription = "Graphique",
-                    tint = BrandPrimary
+                    tint = brand
                 )
             }
         }
@@ -101,9 +102,9 @@ fun TransactionsScreen(state: BankUiState) {
             colors = OutlinedTextFieldDefaults.colors(
                 focusedTextColor = ink,
                 unfocusedTextColor = ink,
-                focusedBorderColor = BrandPrimary.copy(alpha = 0.8f),
+                focusedBorderColor = brand.copy(alpha = 0.8f),
                 unfocusedBorderColor = border,
-                cursorColor = BrandPrimary,
+                cursorColor = brand,
                 focusedContainerColor = fieldBg,
                 unfocusedContainerColor = fieldBg
             ),
@@ -134,7 +135,7 @@ fun TransactionsScreen(state: BankUiState) {
                         )
                         .border(
                             width = 1.dp,
-                            color = if (selected) BrandPrimary.copy(alpha = 0.6f) else border,
+                            color = if (selected) brand.copy(alpha = 0.6f) else border,
                             shape = RoundedCornerShape(12.dp)
                         )
                         .clickable { filterMode = item.first }
@@ -144,7 +145,7 @@ fun TransactionsScreen(state: BankUiState) {
                 ) {
                     Text(
                         text = item.second,
-                        color = if (selected) BrandPrimary else ink,
+                        color = if (selected) brand else ink,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold
                     )

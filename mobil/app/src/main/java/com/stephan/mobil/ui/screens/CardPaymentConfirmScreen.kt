@@ -40,6 +40,7 @@ fun CardPaymentConfirmScreen(
             .getBoolean("dark_mode", false)
     }
 
+    val brand        = LocalBrandColor.current
     val cardBg       = if (darkMode) Color(0xFF17181C) else Color.White
     val amountBg     = if (darkMode) Color(0xFF1E1F24) else Color(0xFFF4F5F7)
     val iconBg       = if (darkMode) Color(0xFF1E1F24) else Color(0xFFFFEBEF)
@@ -97,7 +98,7 @@ fun CardPaymentConfirmScreen(
                         Icon(
                             Icons.Default.ShoppingCart,
                             contentDescription = null,
-                            tint = BrandPrimary,
+                            tint = brand,
                             modifier = Modifier.size(32.dp)
                         )
                     }
@@ -197,7 +198,7 @@ fun CardPaymentConfirmScreen(
                             },
                             modifier = Modifier.weight(1f).height(52.dp),
                             shape = RoundedCornerShape(14.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
+                            colors = ButtonDefaults.buttonColors(containerColor = brand),
                             enabled = !loading
                         ) {
                             if (loading && confirmed == true) {

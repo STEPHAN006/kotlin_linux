@@ -34,6 +34,7 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 @OptIn(ExperimentalMaterial3Api::class)
 fun TransferScreen(state: BankUiState, vm: BankViewModel) {
     val darkMode = LocalDarkMode.current
+    val brand = LocalBrandColor.current
     val accounts = state.balance.accounts
     var senderId by remember(accounts) { mutableIntStateOf(accounts.firstOrNull()?.id ?: 1) }
     var receiverId by remember(accounts) { mutableIntStateOf(accounts.drop(1).firstOrNull()?.id ?: accounts.firstOrNull()?.id ?: 2) }
@@ -41,7 +42,7 @@ fun TransferScreen(state: BankUiState, vm: BankViewModel) {
     var noteText by remember { mutableStateOf("Virement mensuel") }
     var otpCode by remember { mutableStateOf("") }
     val pageBg = if (darkMode) BgBase else Color.White
-    val ink = if (darkMode) TextPrimary else BgSurface
+    val ink = if (darkMode) TextPrimary else Color(0xFF17181C)
     val muted = if (darkMode) TextSecondary else Color(0xFF737780)
     val cardBg = if (darkMode) BgSurfaceElevated else Color.White
     val border = if (darkMode) BgSurfaceTop else LineColor
@@ -74,8 +75,8 @@ fun TransferScreen(state: BankUiState, vm: BankViewModel) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(BrandPrimarySoft, RoundedCornerShape(12.dp))
-                        .border(1.dp, BrandPrimary.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
+                        .background(if (darkMode) BrandPrimarySoft else Color(0xFFF0F0F0), RoundedCornerShape(12.dp))
+                        .border(1.dp, brand.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
                         .padding(14.dp)
                 ) {
                     Row(
@@ -86,13 +87,13 @@ fun TransferScreen(state: BankUiState, vm: BankViewModel) {
                             modifier = Modifier
                                 .width(3.dp)
                                 .height(40.dp)
-                                .background(BrandPrimary, RoundedCornerShape(2.dp))
+                                .background(brand, RoundedCornerShape(2.dp))
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Icon(
                             imageVector = Icons.Default.Security,
                             contentDescription = null,
-                            tint = BrandPrimary,
+                            tint = brand,
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(10.dp))
@@ -154,7 +155,7 @@ fun TransferScreen(state: BankUiState, vm: BankViewModel) {
                         .fillMaxWidth()
                         .height(54.dp),
                     shape = RoundedCornerShape(27.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary)
+                    colors = ButtonDefaults.buttonColors(containerColor = brand)
                 ) {
                     Icon(imageVector = Icons.AutoMirrored.Filled.Send, contentDescription = null, tint = Color.White)
                     Spacer(modifier = Modifier.width(8.dp))
@@ -238,13 +239,13 @@ fun TransferScreen(state: BankUiState, vm: BankViewModel) {
                         Box(
                             modifier = Modifier
                                 .size(56.dp)
-                                .background(BrandPrimary.copy(alpha = 0.1f), CircleShape),
+                                .background(brand.copy(alpha = 0.1f), CircleShape),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.Default.VpnKey,
                                 contentDescription = null,
-                                tint = BrandPrimary,
+                                tint = brand,
                                 modifier = Modifier.size(28.dp)
                             )
                         }
@@ -265,7 +266,7 @@ fun TransferScreen(state: BankUiState, vm: BankViewModel) {
 
                         Text(
                             text = "Réf: ${state.pendingTransfer.reference}",
-                            color = BrandPrimary,
+                            color = brand,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -282,9 +283,9 @@ fun TransferScreen(state: BankUiState, vm: BankViewModel) {
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedTextColor = ink,
                                 unfocusedTextColor = ink,
-                                focusedBorderColor = BrandPrimary,
+                                focusedBorderColor = brand,
                                 unfocusedBorderColor = border,
-                                cursorColor = BrandPrimary,
+                                cursorColor = brand,
                                 focusedContainerColor = if (darkMode) BgSurfaceHigh else LightBackground,
                                 unfocusedContainerColor = if (darkMode) BgSurfaceHigh else LightBackground
                             ),
@@ -304,7 +305,7 @@ fun TransferScreen(state: BankUiState, vm: BankViewModel) {
                                 .fillMaxWidth()
                                 .height(48.dp),
                             shape = RoundedCornerShape(24.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary)
+                            colors = ButtonDefaults.buttonColors(containerColor = brand)
                         ) {
                             Text(
                                 text = "Confirmer le code",
@@ -328,7 +329,8 @@ fun BeneficiaryItemCard(
     onClick: () -> Unit
 ) {
     val darkMode = LocalDarkMode.current
-    val ink = if (darkMode) TextPrimary else BgSurface
+    val brand = LocalBrandColor.current
+    val ink = if (darkMode) TextPrimary else Color(0xFF17181C)
     val muted = if (darkMode) TextSecondary else Color(0xFF737780)
     val cardBg = if (darkMode) BgSurfaceElevated else SoftBackground
     val border = if (darkMode) BgSurfaceTop else LineColor
@@ -360,7 +362,7 @@ fun BeneficiaryItemCard(
                         else -> Icons.Default.AccountBalance
                     },
                     contentDescription = null,
-                    tint = BrandPrimary,
+                    tint = brand,
                     modifier = Modifier.size(18.dp)
                 )
             }

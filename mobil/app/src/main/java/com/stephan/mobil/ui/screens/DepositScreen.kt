@@ -114,6 +114,8 @@ private fun DepositFormScreen(
     onBack: () -> Unit
 ) {
     val darkMode = LocalDarkMode.current
+    val brand    = LocalBrandColor.current
+    val brandSoftBg = if (darkMode) Color(0x1AFFFFFF) else Color(0xFFF0F0F2)
     val cardBg = if (darkMode) BgSurfaceElevated else Color(0xFFF8F9FC)
     val muted  = if (darkMode) TextSecondary else Color(0xFF8B8F98)
     val border = if (darkMode) BgSurfaceTop else Color(0xFFECEEF2)
@@ -162,15 +164,15 @@ private fun DepositFormScreen(
                                 .fillMaxWidth()
                                 .padding(vertical = 4.dp)
                                 .clip(RoundedCornerShape(12.dp))
-                                .background(if (sel) BrandPrimarySoft else cardBg)
-                                .border(if (sel) 1.5.dp else 1.dp, if (sel) BrandPrimary else border, RoundedCornerShape(12.dp))
+                                .background(if (sel) brandSoftBg else cardBg)
+                                .border(if (sel) 1.5.dp else 1.dp, if (sel) brand else border, RoundedCornerShape(12.dp))
                                 .clickable { selectedAccountId = account.id }
                                 .padding(12.dp)
                         ) {
                             RadioButton(
                                 selected = sel,
                                 onClick = { selectedAccountId = account.id },
-                                colors = RadioButtonDefaults.colors(selectedColor = BrandPrimary)
+                                colors = RadioButtonDefaults.colors(selectedColor = brand)
                             )
                             Spacer(Modifier.width(8.dp))
                             Column {
@@ -195,14 +197,14 @@ private fun DepositFormScreen(
                                 modifier = Modifier
                                     .weight(1f)
                                     .clip(RoundedCornerShape(12.dp))
-                                    .background(if (isSel) BrandPrimarySoft else cardBg)
-                                    .border(if (isSel) 1.5.dp else 1.dp, if (isSel) BrandPrimary else border, RoundedCornerShape(12.dp))
+                                    .background(if (isSel) brandSoftBg else cardBg)
+                                    .border(if (isSel) 1.5.dp else 1.dp, if (isSel) brand else border, RoundedCornerShape(12.dp))
                                     .clickable { selectedMethod = method }
                                     .padding(vertical = 14.dp)
                             ) {
-                                Icon(method.icon, null, tint = if (isSel) BrandPrimary else method.color, modifier = Modifier.size(28.dp))
+                                Icon(method.icon, null, tint = if (isSel) brand else method.color, modifier = Modifier.size(28.dp))
                                 Spacer(Modifier.height(6.dp))
-                                Text(method.label, color = if (isSel) BrandPrimary else ink, fontSize = 12.sp, fontWeight = if (isSel) FontWeight.SemiBold else FontWeight.Normal)
+                                Text(method.label, color = if (isSel) brand else ink, fontSize = 12.sp, fontWeight = if (isSel) FontWeight.SemiBold else FontWeight.Normal)
                             }
                         }
                         if (row.size == 1) Spacer(Modifier.weight(1f))
@@ -223,7 +225,7 @@ private fun DepositFormScreen(
                         leadingIcon = { Icon(Icons.Default.Phone, null, tint = muted) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                         shape = RoundedCornerShape(12.dp),
-                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = BrandPrimary, unfocusedBorderColor = border, focusedTextColor = ink, unfocusedTextColor = ink, cursorColor = BrandPrimary),
+                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = brand, unfocusedBorderColor = border, focusedTextColor = ink, unfocusedTextColor = ink, cursorColor = brand),
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
@@ -240,7 +242,7 @@ private fun DepositFormScreen(
                     leadingIcon = { Icon(Icons.Default.AttachMoney, null, tint = muted) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     shape = RoundedCornerShape(12.dp),
-                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = BrandPrimary, unfocusedBorderColor = border, focusedTextColor = ink, unfocusedTextColor = ink, cursorColor = BrandPrimary),
+                    colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = brand, unfocusedBorderColor = border, focusedTextColor = ink, unfocusedTextColor = ink, cursorColor = brand),
                     modifier = Modifier.fillMaxWidth()
                 )
                 amountText.toDoubleOrNull()?.takeIf { it > 0 }?.let {
@@ -254,7 +256,7 @@ private fun DepositFormScreen(
                             selected = amountText == quick.toString(),
                             onClick = { amountText = quick.toString() },
                             label = { Text("%,d".format(quick).replace(",", " "), fontSize = 12.sp) },
-                            colors = FilterChipDefaults.filterChipColors(selectedContainerColor = BrandPrimary, selectedLabelColor = Color.White)
+                            colors = FilterChipDefaults.filterChipColors(selectedContainerColor = brand, selectedLabelColor = Color.White)
                         )
                     }
                 }
@@ -279,7 +281,7 @@ private fun DepositFormScreen(
                     onClick = { vm.deposit(selectedAccountId, amount, selectedMethod.id, phoneText.takeIf { selectedMethod.requiresPhone }) },
                     enabled = canSubmit,
                     shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
+                    colors = ButtonDefaults.buttonColors(containerColor = brand),
                     modifier = Modifier.fillMaxWidth().height(54.dp)
                 ) {
                     if (state.isDepositing) {
@@ -304,6 +306,7 @@ private fun DepositPendingScreen(
     onCancel: () -> Unit
 ) {
     val darkMode = LocalDarkMode.current
+    val brand    = LocalBrandColor.current
     val ink    = if (darkMode) TextPrimary else Color(0xFF17181C)
     val bg     = if (darkMode) BgBase else Color.White
     val cardBg = if (darkMode) BgSurfaceElevated else Color(0xFFF8F9FC)
@@ -334,7 +337,7 @@ private fun DepositPendingScreen(
 
         // Spinner animé
         CircularProgressIndicator(
-            color = BrandPrimary,
+            color = brand,
             strokeWidth = 4.dp,
             modifier = Modifier.size(72.dp)
         )
@@ -350,7 +353,7 @@ private fun DepositPendingScreen(
         Spacer(Modifier.height(8.dp))
         Text(
             "%,.0f MGA".format(result.amount).replace(",", " "),
-            color = BrandPrimary,
+            color = brand,
             fontSize = 28.sp,
             fontWeight = FontWeight.ExtraBold
         )
@@ -374,12 +377,12 @@ private fun DepositPendingScreen(
                     fontSize = 13.sp
                 )
                 Spacer(Modifier.height(10.dp))
-                Text(ussdCode, color = BrandPrimary, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                Text(ussdCode, color = brand, fontSize = 12.sp, fontWeight = FontWeight.Medium)
                 Spacer(Modifier.height(10.dp))
                 OutlinedButton(
                     onClick = { permissionLauncher.launch(Manifest.permission.CALL_PHONE) },
                     shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = BrandPrimary),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = brand),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Icon(Icons.Default.PhoneAndroid, null, modifier = Modifier.size(16.dp))
@@ -434,6 +437,7 @@ private fun DepositSuccessScreen(
     onDone: () -> Unit
 ) {
     val darkMode = LocalDarkMode.current
+    val brand    = LocalBrandColor.current
     val ink = if (darkMode) TextPrimary else Color(0xFF17181C)
     val bg  = if (darkMode) BgBase else Color.White
 
@@ -477,7 +481,7 @@ private fun DepositSuccessScreen(
         Button(
             onClick = onDone,
             shape = RoundedCornerShape(14.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
+            colors = ButtonDefaults.buttonColors(containerColor = brand),
             modifier = Modifier.fillMaxWidth().height(54.dp)
         ) {
             Text("Retour au tableau de bord", fontWeight = FontWeight.SemiBold, fontSize = 16.sp)

@@ -535,6 +535,7 @@ private fun ProfileTextField(
 @Composable
 fun ChangePinFlow(onBack: () -> Unit) {
     val darkMode = LocalDarkMode.current
+    val brand    = LocalBrandColor.current
     val context = LocalContext.current
     val hasPin = remember { SecurityUtil.hasPinCode(context) }
     val bg  = if (darkMode) Color(0xFF0A0B0E) else Color(0xFFF4F5F7)
@@ -599,7 +600,7 @@ fun ChangePinFlow(onBack: () -> Unit) {
                     Icon(
                         imageVector = if (done) Icons.Default.CheckCircle else Icons.Default.Lock,
                         contentDescription = null,
-                        tint = if (done) Color(0xFF4CAF50) else BrandPrimary,
+                        tint = if (done) Color(0xFF4CAF50) else brand,
                         modifier = Modifier.size(48.dp)
                     )
                     Spacer(Modifier.height(16.dp))
@@ -642,8 +643,8 @@ fun ChangePinFlow(onBack: () -> Unit) {
                                     modifier = Modifier
                                         .size(16.dp)
                                         .clip(CircleShape)
-                                        .background(if (filled) BrandPrimary else Color.DarkGray.copy(alpha = 0.5f))
-                                        .border(1.dp, if (filled) BrandPrimary else Color.Gray.copy(alpha = 0.3f), CircleShape)
+                                        .background(if (filled) brand else Color.DarkGray.copy(alpha = 0.5f))
+                                        .border(1.dp, if (filled) brand else Color.Gray.copy(alpha = 0.3f), CircleShape)
                                 )
                             }
                         }

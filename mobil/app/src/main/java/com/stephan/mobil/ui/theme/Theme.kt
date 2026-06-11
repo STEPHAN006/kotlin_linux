@@ -13,6 +13,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
 val LocalDarkMode = staticCompositionLocalOf { false }
+val LocalBrandColor = staticCompositionLocalOf { BrandPrimary }
 
 private val SCpayDarkColorScheme = darkColorScheme(
     primary                = BrandPrimary,
@@ -74,7 +75,10 @@ fun MobilTheme(
         }
     }
 
-    CompositionLocalProvider(LocalDarkMode provides darkTheme) {
+    CompositionLocalProvider(
+        LocalDarkMode provides darkTheme,
+        LocalBrandColor provides if (darkTheme) BrandPrimary else Color(0xFF17181C)
+    ) {
         MaterialTheme(
             colorScheme = colorScheme,
             typography = Typography,

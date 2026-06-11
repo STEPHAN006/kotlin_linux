@@ -25,8 +25,9 @@ fun PremiumInputField(
     icon: ImageVector
 ) {
     val darkMode = LocalDarkMode.current
+    val brand = LocalBrandColor.current
     val fieldBg = if (darkMode) BgSurfaceHigh else LightBackground
-    val textColor = if (darkMode) TextPrimary else BgSurface
+    val textColor = if (darkMode) TextPrimary else Color(0xFF17181C)
     val borderColor = if (darkMode) BgSurfaceTop else LineColor
     val labelColor = if (darkMode) TextSecondary else Color(0xFF737780)
 
@@ -44,7 +45,7 @@ fun PremiumInputField(
                 Icon(
                     icon,
                     contentDescription = null,
-                    tint = BrandPrimary,
+                    tint = brand,
                     modifier = Modifier.size(20.dp)
                 )
             },
@@ -54,11 +55,11 @@ fun PremiumInputField(
             colors = OutlinedTextFieldDefaults.colors(
                 focusedTextColor = textColor,
                 unfocusedTextColor = textColor,
-                focusedBorderColor = BrandPrimary,
+                focusedBorderColor = brand,
                 unfocusedBorderColor = borderColor,
-                cursorColor = BrandPrimary,
-                focusedLeadingIconColor = BrandPrimary,
-                unfocusedLeadingIconColor = BrandPrimary,
+                cursorColor = brand,
+                focusedLeadingIconColor = brand,
+                unfocusedLeadingIconColor = brand,
                 focusedContainerColor = fieldBg,
                 unfocusedContainerColor = fieldBg
             ),

@@ -67,6 +67,7 @@ private fun WithdrawFormScreen(
     onBack: () -> Unit
 ) {
     val darkMode   = LocalDarkMode.current
+    val brand      = LocalBrandColor.current
     val pageBg     = if (darkMode) BgBase       else LightPageBg
     val cardBg     = if (darkMode) BgSurface    else LightCardBg
     val ink        = if (darkMode) TextPrimary  else LightInk
@@ -133,9 +134,9 @@ private fun WithdrawFormScreen(
                                 modifier = Modifier
                                     .size(40.dp)
                                     .clip(CircleShape)
-                                    .background(BrandPrimary.copy(alpha = 0.12f))
+                                    .background(brand.copy(alpha = 0.12f))
                             ) {
-                                Icon(Icons.Default.AccountBalance, null, tint = BrandPrimary, modifier = Modifier.size(20.dp))
+                                Icon(Icons.Default.AccountBalance, null, tint = brand, modifier = Modifier.size(20.dp))
                             }
                             Column {
                                 Text("Solde disponible", color = muted, fontSize = 12.sp)
@@ -187,7 +188,7 @@ private fun WithdrawFormScreen(
                                 Icon(
                                     imageVector = if (m == WithdrawMode.SIMPLE) Icons.Default.ArrowDownward else Icons.Default.Repeat,
                                     contentDescription = null,
-                                    tint = if (active) BrandPrimary else muted,
+                                    tint = if (active) brand else muted,
                                     modifier = Modifier.size(16.dp)
                                 )
                                 Text(
@@ -235,7 +236,7 @@ private fun WithdrawFormScreen(
                                 onClick  = { freqDays = days },
                                 label    = { Text(label, fontSize = 12.sp) },
                                 colors   = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = BrandPrimary,
+                                    selectedContainerColor = brand,
                                     selectedLabelColor     = Color.White
                                 )
                             )
@@ -273,10 +274,10 @@ private fun WithdrawFormScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clip(RoundedCornerShape(14.dp))
-                                    .background(if (selected) BrandPrimary.copy(alpha = 0.06f) else cardBg)
+                                    .background(if (selected) brand.copy(alpha = 0.06f) else cardBg)
                                     .border(
                                         if (selected) 1.5.dp else 1.dp,
-                                        if (selected) BrandPrimary else border,
+                                        if (selected) brand else border,
                                         RoundedCornerShape(14.dp)
                                     )
                                     .clickable { selectedBenef = benef }
@@ -302,7 +303,7 @@ private fun WithdrawFormScreen(
                                     Text(benef.accountNumberMasked, color = muted, fontSize = 11.sp)
                                 }
                                 if (selected) {
-                                    Icon(Icons.Default.CheckCircle, null, tint = BrandPrimary, modifier = Modifier.size(22.dp))
+                                    Icon(Icons.Default.CheckCircle, null, tint = brand, modifier = Modifier.size(22.dp))
                                 } else {
                                     Icon(Icons.Default.RadioButtonUnchecked, null, tint = border, modifier = Modifier.size(22.dp))
                                 }
@@ -325,11 +326,11 @@ private fun WithdrawFormScreen(
                     shape = RoundedCornerShape(12.dp),
                     singleLine = true,
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor   = BrandPrimary,
+                        focusedBorderColor   = brand,
                         unfocusedBorderColor = border,
                         focusedTextColor     = ink,
                         unfocusedTextColor   = ink,
-                        cursorColor          = BrandPrimary,
+                        cursorColor          = brand,
                         focusedContainerColor   = cardBg,
                         unfocusedContainerColor = cardBg
                     ),
@@ -339,7 +340,7 @@ private fun WithdrawFormScreen(
                     Spacer(Modifier.height(6.dp))
                     Text(
                         "%,.0f MGA".format(amount).replace(",", " "),
-                        color = BrandPrimary,
+                        color = brand,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -352,7 +353,7 @@ private fun WithdrawFormScreen(
                             onClick  = { amountText = quick.toString() },
                             label    = { Text("%,d".format(quick).replace(",", " "), fontSize = 12.sp) },
                             colors   = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = BrandPrimary,
+                                selectedContainerColor = brand,
                                 selectedLabelColor     = Color.White
                             )
                         )
@@ -372,11 +373,11 @@ private fun WithdrawFormScreen(
                     shape = RoundedCornerShape(12.dp),
                     singleLine = true,
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor   = BrandPrimary,
+                        focusedBorderColor   = brand,
                         unfocusedBorderColor = border,
                         focusedTextColor     = ink,
                         unfocusedTextColor   = ink,
-                        cursorColor          = BrandPrimary,
+                        cursorColor          = brand,
                         focusedContainerColor   = cardBg,
                         unfocusedContainerColor = cardBg
                     ),
@@ -462,7 +463,7 @@ private fun WithdrawFormScreen(
                     },
                     enabled  = canSubmit,
                     shape    = RoundedCornerShape(14.dp),
-                    colors   = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
+                    colors   = ButtonDefaults.buttonColors(containerColor = brand),
                     modifier = Modifier.fillMaxWidth().height(54.dp)
                 ) {
                     if (state.loading) {
@@ -507,6 +508,7 @@ private fun WithdrawFormScreen(
 @Composable
 private fun ScheduledWithdrawalCard(sw: ScheduledWithdrawal, vm: BankViewModel) {
     val darkMode = LocalDarkMode.current
+    val brand    = LocalBrandColor.current
     val cardBg   = if (darkMode) BgSurface    else LightCardBg
     val ink      = if (darkMode) TextPrimary  else LightInk
     val muted    = SharedMuted
@@ -528,12 +530,12 @@ private fun ScheduledWithdrawalCard(sw: ScheduledWithdrawal, vm: BankViewModel) 
             modifier = Modifier
                 .size(44.dp)
                 .clip(CircleShape)
-                .background((if (sw.isActive) BrandPrimary else muted).copy(alpha = 0.12f))
+                .background((if (sw.isActive) brand else muted).copy(alpha = 0.12f))
         ) {
             Icon(
                 Icons.Default.Repeat,
                 null,
-                tint = if (sw.isActive) BrandPrimary else muted,
+                tint = if (sw.isActive) brand else muted,
                 modifier = Modifier.size(22.dp)
             )
         }
@@ -565,7 +567,7 @@ private fun ScheduledWithdrawalCard(sw: ScheduledWithdrawal, vm: BankViewModel) 
                 onCheckedChange = { vm.toggleScheduledWithdrawal(sw.id) },
                 colors = SwitchDefaults.colors(
                     checkedThumbColor  = Color.White,
-                    checkedTrackColor  = BrandPrimary,
+                    checkedTrackColor  = brand,
                     uncheckedThumbColor = Color.White,
                     uncheckedTrackColor = muted.copy(alpha = 0.4f)
                 ),
@@ -587,7 +589,7 @@ private fun ScheduledWithdrawalCard(sw: ScheduledWithdrawal, vm: BankViewModel) 
             text = { Text("Le retrait automatique vers ${sw.beneficiary?.name} sera supprimé.") },
             confirmButton = {
                 TextButton(onClick = { vm.deleteScheduledWithdrawal(sw.id); showDelete = false }) {
-                    Text("Supprimer", color = BrandPrimary)
+                    Text("Supprimer", color = brand)
                 }
             },
             dismissButton = {
@@ -600,6 +602,7 @@ private fun ScheduledWithdrawalCard(sw: ScheduledWithdrawal, vm: BankViewModel) 
 @Composable
 private fun WithdrawSuccessScreen(message: String?, onDone: () -> Unit) {
     val darkMode = LocalDarkMode.current
+    val brand    = LocalBrandColor.current
     val pageBg   = if (darkMode) BgBase      else LightPageBg
     val ink      = if (darkMode) TextPrimary else LightInk
     val muted    = SharedMuted
@@ -644,7 +647,7 @@ private fun WithdrawSuccessScreen(message: String?, onDone: () -> Unit) {
         Button(
             onClick   = onDone,
             shape     = RoundedCornerShape(14.dp),
-            colors    = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
+            colors    = ButtonDefaults.buttonColors(containerColor = brand),
             modifier  = Modifier.fillMaxWidth().height(54.dp)
         ) {
             Text("Retour au tableau de bord", fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
