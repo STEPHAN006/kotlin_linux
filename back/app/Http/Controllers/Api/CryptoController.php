@@ -26,20 +26,12 @@ class CryptoController extends Controller
     /** GET /api/crypto/wallets */
     public function wallets(Request $request): JsonResponse
     {
-        $user    = $request->user();
-        $wallets = CryptoWallet::where('user_id', $user->id)->get()->keyBy('symbol');
-
-        $result = collect(self::SUPPORTED)->map(function ($info, $symbol) use ($wallets, $user) {
-            $wallet = $wallets->get($symbol);
-
-            if (!$wallet) {
-                $wallet = CryptoWallet::create([
-                    'user_id' => $user->id,
-                    'symbol'  => $symbol,
-                    'address' => self::generateAddress($symbol),
-                    'balance' => 0,
-                ]);
-            }
+        $user   = $request->user();
+        $result = collect(self::SUPPORTED)->map(function ($info, $symbol) use ($user) {
+            $wallet = CryptoWallet::firstOrCreate(
+                ['user_id' => $user->id, 'symbol' => $symbol],
+                ['address' => self::generateAddress($symbol), 'balance' => 0]
+            );
 
             return [
                 'symbol'  => $symbol,
@@ -210,12 +202,76 @@ class CryptoController extends Controller
         ]);
     }
 
+    /** POST /api/crypto/swap */
+    public function swap(Request $request): JsonResponse
+    {
+        $request->validate([
+            'from_symbol'    => ['required', Rule::in(array_keys(self::SUPPORTED))],
+            'to_symbol'      => ['required', Rule::in(array_keys(self::SUPPORTED)), 'different:from_symbol'],
+            'from_amount'    => ['required', 'numeric', 'min:0.000001'],
+            'from_price_usd' => ['required', 'numeric', 'min:0.000001'],
+            'to_price_usd'   => ['required', 'numeric', 'min:0.000001'],
+            'mga_per_usd'    => ['required', 'numeric', 'min:1'],
+        ]);
+
+        $user       = $request->user();
+        $fromWallet = CryptoWallet::where('user_id', $user->id)
+            ->where('symbol', $request->from_symbol)->first();
+
+        $fromAmount = (float) $request->from_amount;
+
+        if (!$fromWallet || (float) $fromWallet->balance < $fromAmount) {
+            return response()->json(['success' => false, 'message' => 'Solde insuffisant pour le swap.'], 422);
+        }
+
+        $fromPriceUsd = (float) $request->from_price_usd;
+        $toPriceUsd   = (float) $request->to_price_usd;
+        $mgaPerUsd    = (float) $request->mga_per_usd;
+        $toAmount     = $fromAmount * $fromPriceUsd / $toPriceUsd;
+        $totalMga     = $fromAmount * $fromPriceUsd * $mgaPerUsd;
+        $txHash       = '0x' . bin2hex(random_bytes(32));
+
+        DB::transaction(function () use ($user, $fromWallet, $request, $fromAmount, $toAmount, $fromPriceUsd, $toPriceUsd, $totalMga, $txHash) {
+            $fromWallet->decrement('balance', $fromAmount);
+
+            $toWallet = CryptoWallet::firstOrCreate(
+                ['user_id' => $user->id, 'symbol' => $request->to_symbol],
+                ['address' => self::generateAddress($request->to_symbol), 'balance' => 0]
+            );
+            $toWallet->increment('balance', $toAmount);
+
+            CryptoTransaction::create([
+                'user_id'    => $user->id,
+                'type'       => 'swap',
+                'symbol'     => $request->from_symbol,
+                'amount'     => $fromAmount,
+                'price_usd'  => $fromPriceUsd,
+                'total_mga'  => $totalMga,
+                'to_address' => $request->to_symbol,
+                'tx_hash'    => $txHash,
+            ]);
+        });
+
+        return response()->json([
+            'success' => true,
+            'message' => "Swap {$request->from_symbol} → {$request->to_symbol} effectué.",
+            'data'    => [
+                'from_symbol' => $request->from_symbol,
+                'to_symbol'   => $request->to_symbol,
+                'from_amount' => round($fromAmount, 8),
+                'to_amount'   => round($toAmount, 8),
+                'tx_hash'     => $txHash,
+            ],
+        ]);
+    }
+
     /** GET /api/crypto/transactions */
     public function transactions(Request $request): JsonResponse
     {
         $txns = CryptoTransaction::where('user_id', $request->user()->id)
             ->latest()
-            ->paginate(30);
+            ->take(50)
+            ->get();
 
         return response()->json(['success' => true, 'data' => $txns]);
     }

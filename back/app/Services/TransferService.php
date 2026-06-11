@@ -7,9 +7,11 @@ use App\Models\Transaction;
 use App\Models\Transfer;
 use App\Models\UserNotification;
 use App\Repositories\TransactionRepository;
+use App\Mail\OtpMail;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
 
 class TransferService
@@ -43,15 +45,18 @@ class TransferService
         if ($requiresOtp) {
             $otp = (string) random_int(100000, 999999);
             Cache::put($this->otpCacheKey($transfer), $otp, now()->addMinutes(10));
-            Log::info('Bank transfer OTP generated', [
-                'transfer_reference' => $transfer->reference,
-                'otp' => $otp,
-            ]);
+
+            Mail::to($sender->user->email)->send(new OtpMail($transfer, $otp));
+
+            // En local uniquement, loguer l'OTP pour faciliter les tests
+            if (app()->environment('local', 'testing')) {
+                Log::info('OTP transfer (dev)', ['ref' => $transfer->reference, 'otp' => $otp]);
+            }
 
             return [
                 'transfer' => $transfer,
                 'otp_required' => true,
-                'message' => 'OTP requis. En demo, le code est visible dans storage/logs/laravel.log.',
+                'message' => 'Un code de vérification a été envoyé à votre adresse email.',
             ];
         }
 

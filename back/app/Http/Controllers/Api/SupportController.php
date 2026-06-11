@@ -5,9 +5,9 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\SupportMessage;
 use App\Models\SupportTicket;
-use App\Models\UserNotification;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class SupportController extends Controller
 {
@@ -40,18 +40,28 @@ class SupportController extends Controller
         ]);
     }
 
-    /** Send a message in the current user's active ticket. */
+    /** Send a message (with optional image) in the current user's active ticket. */
     public function sendMessage(Request $request, int $ticketId): JsonResponse
     {
-        $validated = $request->validate(['message' => 'required|string|max:2000']);
+        $request->validate([
+            'message'    => 'required|string|max:2000',
+            'image'      => 'nullable|image|max:5120',
+        ]);
 
         $ticket = SupportTicket::where('user_id', $request->user()->id)
             ->findOrFail($ticketId);
 
+        $imageUrl = null;
+        if ($request->hasFile('image')) {
+            $path = $request->file('image')->store('support', 'public');
+            $imageUrl = $request->getSchemeAndHttpHost() . '/storage/' . $path;
+        }
+
         SupportMessage::create([
             'ticket_id' => $ticket->id,
             'sender'    => 'user',
-            'message'   => $validated['message'],
+            'message'   => $request->input('message'),
+            'image_url' => $imageUrl,
         ]);
 
         $ticket->load('messages');
@@ -69,10 +79,13 @@ class SupportController extends Controller
             'subject'  => $ticket->subject,
             'status'   => $ticket->status,
             'messages' => $ticket->messages->map(fn($m) => [
-                'id'         => $m->id,
-                'sender'     => $m->sender,
-                'message'    => $m->message,
-                'created_at' => $m->created_at->format('Y-m-d H:i'),
+                'id'           => $m->id,
+                'sender'       => $m->sender,
+                'is_from_agent'=> $m->sender === 'admin',
+                'sender_name'  => $m->sender === 'admin' ? 'Agent SCpay' : 'Vous',
+                'message'      => $m->message,
+                'image_url'    => $m->image_url,
+                'created_at'   => $m->created_at->format('Y-m-d H:i'),
             ]),
         ];
     }

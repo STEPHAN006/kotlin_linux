@@ -1,6 +1,7 @@
 package com.stephan.mobil.data.api
 
 import android.content.Context
+import com.stephan.mobil.BuildConfig
 import com.stephan.mobil.security.SecurityUtil
 import okhttp3.CertificatePinner
 import okhttp3.Interceptor
@@ -11,14 +12,16 @@ import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
 
 object ApiClient {
-    // Dev: HTTP local. En production, remplacer par https:// et activer le certificate pinning.
-    private const val BASE_URL = "http://192.168.1.146:8000/api/"
-    private const val PROD_HOST = "api.scpay.mg"
 
-    // SHA-256 pins à remplacer par le vrai certificat en production (keytool / openssl)
+    // URL et host injectés via BuildConfig (debug = local.properties, release = production HTTPS)
+    private val BASE_URL get() = BuildConfig.API_BASE_URL
+    private val PROD_HOST get() = BuildConfig.API_HOST
+
+    // Pins SHA-256 du certificat de production.
+    // Obtenir avec : openssl s_client -connect api.scpay.mg:443 | openssl x509 -pubkey -noout | openssl pkey -pubin -outform DER | openssl dgst -sha256 -binary | base64
     private val CERT_PINS = listOf(
-        "sha256/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", // leaf
-        "sha256/BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=", // backup
+        "sha256/REPLACE_WITH_REAL_LEAF_CERT_PIN=",   // certificat leaf
+        "sha256/REPLACE_WITH_REAL_BACKUP_PIN=",       // certificat intermédiaire / backup
     )
 
     private val certificatePinner = CertificatePinner.Builder()
@@ -31,10 +34,6 @@ object ApiClient {
 
     fun getClient(context: Context): Retrofit {
         if (retrofit == null) {
-            val loggingInterceptor = HttpLoggingInterceptor().apply {
-                level = HttpLoggingInterceptor.Level.BODY
-            }
-
             val authInterceptor = Interceptor { chain ->
                 val requestBuilder = chain.request().newBuilder()
                 val token = SecurityUtil.getAuthToken(context)
@@ -47,12 +46,18 @@ object ApiClient {
             }
 
             val builder = OkHttpClient.Builder()
-                .addInterceptor(loggingInterceptor)
                 .addInterceptor(authInterceptor)
                 .connectTimeout(30, TimeUnit.SECONDS)
                 .readTimeout(30, TimeUnit.SECONDS)
 
-            // Activate certificate pinning only when targeting the production host (HTTPS)
+            // Logs HTTP uniquement en debug
+            if (BuildConfig.ENABLE_HTTP_LOGGING) {
+                builder.addInterceptor(
+                    HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BODY }
+                )
+            }
+
+            // Certificate pinning uniquement en HTTPS (production)
             if (BASE_URL.startsWith("https://")) {
                 builder.certificatePinner(certificatePinner)
             }

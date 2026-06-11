@@ -27,8 +27,8 @@ class KycController extends Controller
     {
         $request->validate([
             'cin_full_name' => ['required', 'string', 'max:255'],
-            'cin_recto'     => ['required', 'image', 'mimes:jpeg,png,jpg', 'max:8192'],
-            'cin_verso'     => ['required', 'image', 'mimes:jpeg,png,jpg', 'max:8192'],
+            'cin_recto'     => ['required', 'image', 'mimes:jpeg,png,jpg', 'max:10240'],
+            'cin_verso'     => ['required', 'image', 'mimes:jpeg,png,jpg', 'max:10240'],
         ]);
 
         $user = $request->user();

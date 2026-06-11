@@ -164,12 +164,18 @@
             <span class="transition-all duration-300" :class="sidebarOpen ? 'opacity-100 w-auto' : 'opacity-0 w-0 overflow-hidden'">Utilisateurs</span>
         </a>
         <a href="{{ route('admin.cards') }}"
-           class="nav-item {{ request()->routeIs('admin.cards*') ? 'active' : '' }}"
+           class="nav-item {{ request()->routeIs('admin.cards') ? 'active' : '' }}"
            title="Cartes">
             <span class="material-symbols-outlined flex-shrink-0">credit_card</span>
             <span class="transition-all duration-300" :class="sidebarOpen ? 'opacity-100 w-auto' : 'opacity-0 w-0 overflow-hidden'">Cartes</span>
         </a>
-        <a href="{{ route('admin.support') }}"
+        <a href="{{ route('admin.cards.test') }}"
+           class="nav-item {{ request()->routeIs('admin.cards.test*') ? 'active' : '' }}"
+           title="Test paiement">
+            <span class="material-symbols-outlined flex-shrink-0">contactless</span>
+            <span class="transition-all duration-300" :class="sidebarOpen ? 'opacity-100 w-auto' : 'opacity-0 w-0 overflow-hidden'">Test paiement</span>
+        </a>
+        <a href="{{ route('admin.support.index') }}"
            class="nav-item relative {{ request()->routeIs('admin.support*') ? 'active' : '' }}"
            title="Support">
             <span class="material-symbols-outlined flex-shrink-0">support_agent</span>

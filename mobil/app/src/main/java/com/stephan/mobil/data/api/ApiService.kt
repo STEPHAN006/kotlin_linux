@@ -11,6 +11,7 @@ import retrofit2.http.GET
 import retrofit2.http.Multipart
 import retrofit2.http.PATCH
 import retrofit2.http.POST
+import retrofit2.http.PUT
 import retrofit2.http.Part
 import retrofit2.http.Path
 import retrofit2.http.Query
@@ -22,6 +23,9 @@ interface ApiService {
 
     @POST("register")
     suspend fun register(@Body request: RegisterRequest): Response<ApiEnvelope<AuthData>>
+
+    @GET("user")
+    suspend fun getCurrentUser(): Response<ApiEnvelope<User>>
 
     @GET("balance")
     suspend fun getBalance(): Response<ApiEnvelope<BalanceResponse>>
@@ -44,8 +48,26 @@ interface ApiService {
     @POST("cards")
     suspend fun createCard(@Body request: CreateCardRequest): Response<ApiEnvelope<Card>>
 
+    @GET("cards/{id}/reveal")
+    suspend fun revealCard(@Path("id") id: Int): Response<ApiEnvelope<CardDetails>>
+
+    @PATCH("cards/{id}/limit")
+    suspend fun updateCardLimit(@Path("id") id: Int, @Body body: Map<String, Double>): Response<ApiEnvelope<Card>>
+
     @POST("cards/{id}/toggle")
     suspend fun toggleCard(@Path("id") id: Int): Response<ApiEnvelope<Card>>
+
+    @DELETE("cards/{id}")
+    suspend fun deleteCard(@Path("id") id: Int): Response<ApiEnvelope<Unit>>
+
+    @POST("deposits")
+    suspend fun createDeposit(@Body request: DepositRequest): Response<ApiEnvelope<DepositResult>>
+
+    @POST("deposits/{reference}/confirm")
+    suspend fun confirmDeposit(@Path("reference") reference: String): Response<ApiEnvelope<DepositResult>>
+
+    @POST("deposits/{reference}/cancel")
+    suspend fun cancelDeposit(@Path("reference") reference: String): Response<ApiEnvelope<Unit>>
 
     @POST("transfers")
     suspend fun createTransfer(@Body request: TransferRequest): Response<ApiEnvelope<TransferData>>
@@ -63,25 +85,16 @@ interface ApiService {
     suspend fun payQr(@Body request: QrPayRequest): Response<ApiEnvelope<TransferData>>
 
     // Support tickets
-    @GET("support")
-    suspend fun getSupportTickets(): Response<ApiEnvelope<List<SupportTicket>>>
-
-    @POST("support")
-    suspend fun createSupportTicket(@Body request: CreateTicketRequest): Response<ApiEnvelope<Map<String, Int>>>
-
-    @GET("support/{id}")
-    suspend fun getSupportTicket(@Path("id") id: Int): Response<ApiEnvelope<SupportTicketDetail>>
+    @GET("support/ticket")
+    suspend fun getOrCreateSupportTicket(): Response<ApiEnvelope<SupportTicketDetail>>
 
     @Multipart
-    @POST("support/{id}/messages")
+    @POST("support/ticket/{ticketId}/messages")
     suspend fun addSupportMessage(
-        @Path("id") ticketId: Int,
+        @Path("ticketId") ticketId: Int,
         @Part("message") message: RequestBody,
-        @Part attachments: List<MultipartBody.Part>
-    ): Response<ApiEnvelope<Map<String, Int>>>
-
-    @PATCH("support/{id}/close")
-    suspend fun closeSupportTicket(@Path("id") id: Int): Response<ApiEnvelope<Unit>>
+        @Part image: MultipartBody.Part?
+    ): Response<ApiEnvelope<SupportTicketDetail>>
 
     @Streaming
     @GET("statements/monthly")
@@ -116,8 +129,21 @@ interface ApiService {
     @POST("crypto/send")
     suspend fun sendCrypto(@Body request: CryptoSendRequest): Response<ApiEnvelope<CryptoTradeResult>>
 
+    @POST("crypto/swap")
+    suspend fun swapCrypto(@Body request: CryptoSwapRequest): Response<ApiEnvelope<CryptoSwapResult>>
+
     @GET("crypto/transactions")
-    suspend fun getCryptoTransactions(): Response<ApiEnvelope<Map<String, Any>>>
+    suspend fun getCryptoTransactions(): Response<ApiEnvelope<List<CryptoTxn>>>
+
+    // Card payment confirmation
+    @GET("card-payments/pending")
+    suspend fun getPendingCardPayments(): Response<ApiEnvelope<List<PendingCardPayment>>>
+
+    @POST("card-payments/{reference}/confirm")
+    suspend fun confirmCardPayment(@Path("reference") reference: String): Response<ApiEnvelope<Unit>>
+
+    @POST("card-payments/{reference}/decline")
+    suspend fun declineCardPayment(@Path("reference") reference: String): Response<ApiEnvelope<Unit>>
 
     // Push notifications
     @GET("notifications")
@@ -128,4 +154,22 @@ interface ApiService {
 
     @POST("notifications/read-all")
     suspend fun markAllNotificationsRead(): Response<ApiEnvelope<Unit>>
+
+    @POST("fcm-token")
+    suspend fun updateFcmToken(@Body body: Map<String, String>): Response<ApiEnvelope<Unit>>
+
+    @GET("scheduled-withdrawals")
+    suspend fun getScheduledWithdrawals(): Response<ApiEnvelope<List<ScheduledWithdrawal>>>
+
+    @POST("scheduled-withdrawals")
+    suspend fun createScheduledWithdrawal(@Body request: ScheduledWithdrawalRequest): Response<ApiEnvelope<ScheduledWithdrawal>>
+
+    @PATCH("scheduled-withdrawals/{id}/toggle")
+    suspend fun toggleScheduledWithdrawal(@Path("id") id: Int): Response<ApiEnvelope<ScheduledWithdrawal>>
+
+    @DELETE("scheduled-withdrawals/{id}")
+    suspend fun deleteScheduledWithdrawal(@Path("id") id: Int): Response<ApiEnvelope<Unit>>
+
+    @PUT("profile")
+    suspend fun updateProfile(@Body body: Map<String, String>): Response<ApiEnvelope<User>>
 }

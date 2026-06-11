@@ -10,6 +10,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,6 +21,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -32,6 +34,7 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AddCircleOutline
@@ -43,14 +46,17 @@ import androidx.compose.material.icons.filled.RemoveRedEye
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.ViewModule
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -76,6 +82,8 @@ import com.stephan.mobil.data.model.Card
 import com.stephan.mobil.ui.viewmodel.BankUiState
 import com.stephan.mobil.ui.viewmodel.BankViewModel
 import kotlin.math.absoluteValue
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 
 private val CardPageBg = BgBase
 private val CardInk = TextPrimary
@@ -83,7 +91,8 @@ private val CardMuted = TextSecondary
 private val CardSoft = BgSurfaceHigh
 
 @Composable
-fun CardsScreen(state: BankUiState, vm: BankViewModel, darkMode: Boolean = false) {
+fun CardsScreen(state: BankUiState, vm: BankViewModel) {
+    val darkMode = LocalDarkMode.current
     var showChooseCard by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
     var settingsCardId by remember { mutableIntStateOf(0) }
@@ -96,19 +105,16 @@ fun CardsScreen(state: BankUiState, vm: BankViewModel, darkMode: Boolean = false
             card = selectedCard,
             accountId = state.balance.accounts.firstOrNull()?.id ?: 1,
             vm = vm,
-            darkMode = darkMode,
             onBack = { showSettings = false }
         )
         showChooseCard -> ChooseCardScreen(
             state = state,
             vm = vm,
-            darkMode = darkMode,
             onBack = { showChooseCard = false }
         )
         else -> CardsMainContent(
             state = state,
             vm = vm,
-            darkMode = darkMode,
             onAddCard = { showChooseCard = true },
             onSettings = { cardId -> settingsCardId = cardId; showSettings = true }
         )
@@ -120,11 +126,13 @@ private fun CardSettingsPage(
     card: Card,
     accountId: Int,
     vm: BankViewModel,
-    darkMode: Boolean,
     onBack: () -> Unit
 ) {
-    val ink = CardInk
-    val bg = BgBase
+    val darkMode = LocalDarkMode.current
+    val ink = if (darkMode) TextPrimary else BgSurface
+    val bg = if (darkMode) BgBase else Color.White
+    val cardBg = if (darkMode) BgSurfaceElevated else LightBackground
+    val dividerColor = if (darkMode) BgSurfaceTop else Color(0xFFE5E7EB)
 
     Column(
         modifier = Modifier
@@ -145,7 +153,7 @@ private fun CardSettingsPage(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(16.dp))
-                .background(BgSurfaceElevated)
+                .background(cardBg)
                 .padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
@@ -157,7 +165,7 @@ private fun CardSettingsPage(
                     fontWeight = FontWeight.SemiBold
                 )
             }
-            Divider(color = BgSurfaceTop)
+            Divider(color = dividerColor)
             SettingsRow("Type", card.type.replaceFirstChar { it.uppercase() }, ink)
             SettingsRow("Expiration", card.expiryDate.ifBlank { "N/A" }, ink)
             SettingsRow("Limite journalière", "%,.0f MGA".format(card.dailyLimit).replace(",", " "), ink)
@@ -172,8 +180,7 @@ private fun CardSettingsPage(
             SettingsActionButton(
                 label = if (card.isBlocked) "Débloquer la carte" else "Bloquer la carte",
                 icon = if (card.isBlocked) Icons.Default.LockOpen else Icons.Default.Lock,
-                color = if (card.isBlocked) SemanticSuccess else BrandPrimary,
-                darkMode = darkMode
+                color = if (card.isBlocked) SemanticSuccess else BrandPrimary
             ) { vm.toggleCard(card.id); onBack() }
 
             Spacer(Modifier.height(12.dp))
@@ -181,9 +188,8 @@ private fun CardSettingsPage(
             SettingsActionButton(
                 label = "Augmenter la limite (+500 000 MGA)",
                 icon = Icons.Default.Tune,
-                color = Color(0xFF5B8DEF),
-                darkMode = darkMode
-            ) { vm.createCard(accountId, card.dailyLimit + 500_000.0); onBack() }
+                color = Color(0xFF5B8DEF)
+            ) { vm.updateCardLimit(card.id, card.dailyLimit + 500_000.0); onBack() }
         }
     }
 }
@@ -197,7 +203,7 @@ private fun SettingsRow(label: String, value: String, ink: Color) {
 }
 
 @Composable
-private fun SettingsActionButton(label: String, icon: ImageVector, color: Color, darkMode: Boolean, onClick: () -> Unit) {
+private fun SettingsActionButton(label: String, icon: ImageVector, color: Color, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -217,20 +223,26 @@ private fun SettingsActionButton(label: String, icon: ImageVector, color: Color,
 private fun ChooseCardScreen(
     state: BankUiState,
     vm: BankViewModel,
-    darkMode: Boolean,
     onBack: () -> Unit
 ) {
+    val darkMode = LocalDarkMode.current
     val context = LocalContext.current
     val accountId = state.balance.accounts.firstOrNull()?.id ?: 1
     val sharedPrefs = remember { context.getSharedPreferences("card_designs", Context.MODE_PRIVATE) }
     var isVirtualSelected by remember { mutableStateOf(true) }
     var selectedDesign by remember { mutableStateOf(1) } // 1 = Solana (Default in screenshot 1)
+    val pageBg = if (darkMode) BgBase else Color.White
+    val ink = if (darkMode) TextPrimary else BgSurface
+    val muted = if (darkMode) TextSecondary else Color(0xFF737780)
+    val segmentBg = if (darkMode) BgSurfaceElevated else LightBackground
+    val segmentSelectedBg = if (darkMode) BgSurfaceHigh else Color.White
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(BgBase)
-            .padding(24.dp)
+            .background(pageBg)
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 24.dp, vertical = 16.dp)
     ) {
         // Header
         Row(
@@ -241,7 +253,7 @@ private fun ChooseCardScreen(
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "Retour",
-                    tint = CardInk
+                    tint = ink
                 )
             }
         }
@@ -251,8 +263,8 @@ private fun ChooseCardScreen(
         // Title
         Text(
             text = "Choisir une carte",
-            color = CardInk,
-            fontSize = 30.sp,
+            color = ink,
+            fontSize = 28.sp,
             fontWeight = FontWeight.Bold
         )
 
@@ -263,7 +275,7 @@ private fun ChooseCardScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(12.dp))
-                .background(BgSurfaceElevated)
+                .background(segmentBg)
                 .padding(4.dp),
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
@@ -273,7 +285,7 @@ private fun ChooseCardScreen(
                     .clip(RoundedCornerShape(8.dp))
                     .background(
                         if (isVirtualSelected) {
-                            BgSurfaceHigh
+                            segmentSelectedBg
                         } else Color.Transparent
                     )
                     .clickable { isVirtualSelected = true }
@@ -282,7 +294,7 @@ private fun ChooseCardScreen(
             ) {
                 Text(
                     "Carte virtuelle",
-                    color = Color.White,
+                    color = ink,
                     fontWeight = if (isVirtualSelected) FontWeight.Bold else FontWeight.Normal,
                     fontSize = 15.sp
                 )
@@ -293,7 +305,7 @@ private fun ChooseCardScreen(
                     .clip(RoundedCornerShape(8.dp))
                     .background(
                         if (!isVirtualSelected) {
-                            BgSurfaceHigh
+                            segmentSelectedBg
                         } else Color.Transparent
                     )
                     .clickable { isVirtualSelected = false }
@@ -302,7 +314,7 @@ private fun ChooseCardScreen(
             ) {
                 Text(
                     "Carte physique",
-                    color = Color.White,
+                    color = ink,
                     fontWeight = if (!isVirtualSelected) FontWeight.Bold else FontWeight.Normal,
                     fontSize = 15.sp
                 )
@@ -315,7 +327,7 @@ private fun ChooseCardScreen(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(320.dp),
+                .height(292.dp),
             contentAlignment = Alignment.Center
         ) {
             VerticalCardPreview(
@@ -338,7 +350,7 @@ private fun ChooseCardScreen(
         ) {
             Text(
                 text = cardTitle,
-                color = CardInk,
+                color = ink,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center
@@ -346,7 +358,7 @@ private fun ChooseCardScreen(
             Spacer(Modifier.height(6.dp))
             Text(
                 text = "Compatible avec Apple Pay et Google Pay.",
-                color = CardMuted,
+                color = muted,
                 fontSize = 13.sp,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(horizontal = 16.dp)
@@ -372,7 +384,7 @@ private fun ChooseCardScreen(
                         .clip(CircleShape)
                         .background(
                             if (isSelected) {
-                                Color.White.copy(alpha = 0.15f)
+                                if (darkMode) Color.White.copy(alpha = 0.15f) else BrandPrimary.copy(alpha = 0.14f)
                             } else Color.Transparent
                         )
                         .clickable { selectedDesign = index }
@@ -399,7 +411,7 @@ private fun ChooseCardScreen(
             }
         }
 
-        Spacer(Modifier.weight(0.1f))
+        Spacer(Modifier.height(14.dp))
 
         // Demande de carte button
         Button(
@@ -415,15 +427,16 @@ private fun ChooseCardScreen(
             },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(56.dp),
+                .heightIn(min = 54.dp),
             shape = RoundedCornerShape(14.dp),
             colors = ButtonDefaults.buttonColors(
-                containerColor = BgSurfaceHigh,
+                containerColor = BrandPrimary,
                 contentColor = Color.White
             )
         ) {
             Text("Demande de carte · 10 USD", fontSize = 16.sp, fontWeight = FontWeight.Bold)
         }
+        Spacer(Modifier.height(16.dp))
     }
 }
 
@@ -523,14 +536,15 @@ private fun VerticalCardPreview(designIndex: Int, isVirtual: Boolean) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun CardsMainContent(
     state: BankUiState,
     vm: BankViewModel,
-    darkMode: Boolean,
     onAddCard: () -> Unit,
     onSettings: (Int) -> Unit = {}
 ) {
+    val darkMode = LocalDarkMode.current
     val accountId = state.balance.accounts.firstOrNull()?.id ?: 1
     val context = LocalContext.current
     val sharedPrefs = remember { context.getSharedPreferences("card_designs", Context.MODE_PRIVATE) }
@@ -552,6 +566,8 @@ private fun CardsMainContent(
     var selectedCardIndex by remember { mutableStateOf(0) }
     var revealedCardId by remember { mutableStateOf<Int?>(null) }
     var showWalletDialog by remember { mutableStateOf(false) }
+    var showLimitDialog by remember { mutableStateOf(false) }
+    var limitInput by remember { mutableStateOf("") }
 
     // Keep active card selection in bounds
     LaunchedEffect(cards.size) {
@@ -561,8 +577,47 @@ private fun CardsMainContent(
     }
 
     val card = cards.getOrNull(selectedCardIndex) ?: cards.first()
-    val designIndex = getCardDesign(card, sharedPrefs)
     val isRevealed = revealedCardId == card.id
+    val pageBg = if (darkMode) BgBase else Color.White
+    val ink = if (darkMode) TextPrimary else BgSurface
+    val muted = if (darkMode) TextSecondary else Color(0xFF737780)
+
+    // Dialog: modifier la limite
+    if (showLimitDialog && card.id != 0) {
+        AlertDialog(
+            onDismissRequest = { showLimitDialog = false },
+            title = { Text("Modifier la limite", fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Limite actuelle : %,.0f MGA".format(card.dailyLimit).replace(",", " "), color = TextSecondary, fontSize = 13.sp)
+                    OutlinedTextField(
+                        value = limitInput,
+                        onValueChange = { limitInput = it.filter { c -> c.isDigit() } },
+                        label = { Text("Nouvelle limite (MGA)") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val newLimit = limitInput.toDoubleOrNull()
+                        if (newLimit != null && newLimit >= 10_000) {
+                            vm.updateCardLimit(card.id, newLimit)
+                            showLimitDialog = false
+                            limitInput = ""
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary)
+                ) { Text("Confirmer") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLimitDialog = false; limitInput = "" }) { Text("Annuler") }
+            }
+        )
+    }
 
     // Dialog: Google Wallet
     if (showWalletDialog) {
@@ -592,10 +647,15 @@ private fun CardsMainContent(
         )
     }
 
+    PullToRefreshBox(
+        isRefreshing = state.loading,
+        onRefresh = { vm.refreshAll() },
+        modifier = Modifier.fillMaxSize()
+    ) {
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(BgBase)
+            .background(pageBg)
             .padding(horizontal = 24.dp),
         verticalArrangement = Arrangement.spacedBy(26.dp)
     ) {
@@ -608,7 +668,7 @@ private fun CardsMainContent(
             ) {
                 Text(
                     text = "Cartes",
-                    color = CardInk,
+                    color = ink,
                     fontSize = 34.sp,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.weight(1f)
@@ -621,7 +681,7 @@ private fun CardsMainContent(
                     Icon(
                         Icons.Default.MailOutline,
                         null,
-                        tint = CardInk,
+                        tint = ink,
                         modifier = Modifier.size(26.dp)
                     )
                 }
@@ -629,7 +689,7 @@ private fun CardsMainContent(
                     Icon(
                         Icons.Default.AddCircleOutline,
                         null,
-                        tint = CardInk,
+                        tint = ink,
                         modifier = Modifier.size(28.dp)
                     )
                 }
@@ -661,8 +721,8 @@ private fun CardsMainContent(
                 HorizontalPager(
                     state = pagerState,
                     modifier = Modifier.fillMaxWidth(),
-                    contentPadding = PaddingValues(horizontal = 36.dp),
-                    pageSpacing = 16.dp,
+                    contentPadding = PaddingValues(horizontal = 12.dp),
+                    pageSpacing = 10.dp,
                 ) { page ->
                     val c = cards[page]
                     val pageOffset = (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
@@ -683,7 +743,8 @@ private fun CardsMainContent(
                             card = c,
                             userName = state.user?.name ?: "AROVANA",
                             designIndex = getCardDesign(c, sharedPrefs),
-                            revealed = revealedCardId == c.id
+                            revealed = revealedCardId == c.id,
+                            cvv = if (revealedCardId == c.id) state.revealedCard?.cvv.orEmpty() else ""
                         )
                     }
                 }
@@ -708,7 +769,7 @@ private fun CardsMainContent(
                                     .clip(CircleShape)
                                     .background(
                                         if (isActive) BrandPrimary
-                                        else CardMuted.copy(alpha = 0.35f)
+                                        else muted.copy(alpha = 0.35f)
                                     )
                             )
                         }
@@ -722,14 +783,22 @@ private fun CardsMainContent(
                 CardAction(
                     label = if (isRevealed) "Masquer" else "Voir",
                     icon = Icons.Default.RemoveRedEye
-                ) { revealedCardId = if (isRevealed) null else card.id }
+                ) {
+                    if (isRevealed) {
+                        revealedCardId = null
+                        vm.clearRevealedCard()
+                    } else {
+                        revealedCardId = card.id
+                        vm.revealCard(card.id)
+                    }
+                }
                 CardAction(
                     label = if (card.isBlocked) "Débloquer" else "Bloquer",
                     icon = if (card.isBlocked) Icons.Default.LockOpen else Icons.Default.Lock,
                     onClick = { if (card.id != 0) vm.toggleCard(card.id) }
                 )
                 CardAction("Limite", Icons.Default.Tune) {
-                    if (card.id != 0) vm.createCard(accountId, card.dailyLimit + 500_000.0)
+                    if (card.id != 0) { limitInput = card.dailyLimit.toLong().toString(); showLimitDialog = true }
                     else vm.notify("Créez une carte pour gérer la limite")
                 }
                 CardAction("Paramètre", Icons.Default.Settings) { onSettings(card.id) }
@@ -741,7 +810,7 @@ private fun CardsMainContent(
                 Row(
                     modifier = Modifier
                         .clip(RoundedCornerShape(28.dp))
-                        .background(CardInk)
+                        .background(if (darkMode) BgSurfaceHigh else Color(0xFFEDEEF2))
                         .clickable { showWalletDialog = true }
                         .padding(horizontal = 22.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -769,14 +838,14 @@ private fun CardsMainContent(
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = "Transactions",
-                    color = CardInk,
+                    color = ink,
                     fontSize = 22.sp,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.weight(1f)
                 )
-                Icon(Icons.Default.ViewModule, null, tint = CardMuted)
+                Icon(Icons.Default.ViewModule, null, tint = muted)
                 Spacer(Modifier.width(18.dp))
-                Text("...", color = CardMuted, fontSize = 24.sp)
+                Text("...", color = muted, fontSize = 24.sp)
             }
         }
 
@@ -788,7 +857,7 @@ private fun CardsMainContent(
                         .padding(vertical = 24.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("Aucune transaction récente", color = CardMuted, fontSize = 14.sp)
+                    Text("Aucune transaction récente", color = muted, fontSize = 14.sp)
                 }
             }
         } else {
@@ -799,10 +868,11 @@ private fun CardsMainContent(
 
         item { Spacer(Modifier.height(22.dp)) }
     }
+    } // PullToRefreshBox
 }
 
 @Composable
-private fun FlippableScpayCard(card: Card, userName: String, designIndex: Int, revealed: Boolean = false) {
+private fun FlippableScpayCard(card: Card, userName: String, designIndex: Int, revealed: Boolean = false, cvv: String = "") {
     var flipped by remember { mutableStateOf(false) }
     val rotation by animateFloatAsState(
         targetValue = if (flipped) 180f else 0f,
@@ -814,7 +884,7 @@ private fun FlippableScpayCard(card: Card, userName: String, designIndex: Int, r
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(200.dp)
+            .height(218.dp)
             .graphicsLayer {
                 rotationY = rotation
                 cameraDistance = 16f * density
@@ -824,13 +894,13 @@ private fun FlippableScpayCard(card: Card, userName: String, designIndex: Int, r
         if (showBack) {
             CardBack(card, designIndex, revealed, Modifier.graphicsLayer { rotationY = 180f })
         } else {
-            CardFront(card, userName, designIndex, revealed = revealed)
+            CardFront(card, userName, designIndex, revealed = revealed, cvv = cvv)
         }
     }
 }
 
 @Composable
-private fun CardFront(card: Card, userName: String, designIndex: Int, modifier: Modifier = Modifier, revealed: Boolean = false) {
+private fun CardFront(card: Card, userName: String, designIndex: Int, modifier: Modifier = Modifier, revealed: Boolean = false, cvv: String = "") {
     val brush = getCardBrush(designIndex)
     // Generate deterministic partial card number for revealed mode
     val fakePart1 = (4500 + (card.id * 37) % 99).toString()
@@ -839,6 +909,7 @@ private fun CardFront(card: Card, userName: String, designIndex: Int, modifier: 
     val cardNumber = if (revealed) "$fakePart1 $fakePart2 $fakePart3 ${card.lastFour}"
                      else "•••• •••• •••• ${card.lastFour}"
     val expiryDisplay = if (revealed && card.expiryDate.isNotBlank()) card.expiryDate else "••/••"
+    val cvvDisplay = if (revealed && cvv.isNotBlank()) cvv else "•••"
 
     Box(
         modifier = modifier
@@ -858,7 +929,7 @@ private fun CardFront(card: Card, userName: String, designIndex: Int, modifier: 
                 }
                 Column {
                     Text("CVV", color = Color.White.copy(alpha = 0.82f), fontSize = 13.sp)
-                    Text("•••", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    Text(cvvDisplay, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -919,6 +990,9 @@ private fun CardBack(card: Card, designIndex: Int, revealed: Boolean = false, mo
 
 @Composable
 private fun CardAction(label: String, icon: ImageVector, onClick: () -> Unit) {
+    val darkMode = LocalDarkMode.current
+    val ink = if (darkMode) TextPrimary else BgSurface
+    val soft = if (darkMode) BgSurfaceHigh else SoftBackground
     Column(
         modifier = Modifier
             .width(78.dp)
@@ -929,13 +1003,13 @@ private fun CardAction(label: String, icon: ImageVector, onClick: () -> Unit) {
             modifier = Modifier
                 .size(58.dp)
                 .clip(CircleShape)
-                .background(CardSoft),
+                .background(soft),
             contentAlignment = Alignment.Center
         ) {
-            Icon(icon, null, tint = CardInk, modifier = Modifier.size(27.dp))
+            Icon(icon, null, tint = ink, modifier = Modifier.size(27.dp))
         }
         Spacer(Modifier.height(10.dp))
-        Text(label, color = CardInk, fontSize = 14.sp)
+        Text(label, color = ink, fontSize = 14.sp)
     }
 }
 

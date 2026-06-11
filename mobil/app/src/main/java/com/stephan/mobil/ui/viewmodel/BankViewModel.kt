@@ -13,35 +13,63 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-data class BankUiState(
-    val loading: Boolean = true,
-    val user: User? = null,
-    val balance: BalanceResponse = BalanceResponse(),
-    val transactions: List<Transaction> = emptyList(),
-    val beneficiaries: List<Beneficiary> = emptyList(),
-    val cards: List<Card> = emptyList(),
-    val pendingTransfer: Transfer? = null,
-    val qrPayload: String? = null,
-    val qrScanResult: QrScanResult? = null,
-    val message: String? = null,
-    val error: String? = null,
-    val mockMode: Boolean = true,
-    val notifications: List<com.stephan.mobil.data.model.AppNotification> = emptyList(),
-    val kycRejectionReason: String? = null,
-    val kycSubmitting: Boolean = false,
-    val cryptoWallets: List<CryptoWallet> = emptyList(),
-    val cryptoMarkets: List<CoinMarketData> = emptyList(),
-    val cryptoChart: List<Pair<Long, Double>> = emptyList(),
-    val cryptoLoading: Boolean = false,
-    val mgaPerUsd: Double = 4500.0
-)
+    data class BankUiState(
+        val initializing: Boolean = true,
+        val loading: Boolean = false,
+        val user: User? = null,
+        val balance: BalanceResponse = BalanceResponse(),
+        val transactions: List<Transaction> = emptyList(),
+        val beneficiaries: List<Beneficiary> = emptyList(),
+        val cards: List<Card> = emptyList(),
+        val pendingTransfer: Transfer? = null,
+        val qrPayload: String? = null,
+        val qrScanResult: QrScanResult? = null,
+        val revealedCard: com.stephan.mobil.data.model.CardDetails? = null,
+        val message: String? = null,
+        val error: String? = null,
+        val mockMode: Boolean = false,
+        val notifications: List<com.stephan.mobil.data.model.AppNotification> = emptyList(),
+        val pendingCardPayments: List<com.stephan.mobil.data.model.PendingCardPayment> = emptyList(),
+        val kycRejectionReason: String? = null,
+        val kycSubmitting: Boolean = false,
+        val depositPending: DepositResult? = null,
+        val depositSuccess: DepositResult? = null,
+        val isDepositing: Boolean = false,
+        val isConfirmingDeposit: Boolean = false,
+        val scheduledWithdrawals: List<com.stephan.mobil.data.model.ScheduledWithdrawal> = emptyList(),
+    )
 
 class BankViewModel(private val repository: BankRepository, private val appContext: Context? = null) : ViewModel() {
     private val _uiState = MutableStateFlow(BankUiState(mockMode = repository.useMockData))
     val uiState: StateFlow<BankUiState> = _uiState.asStateFlow()
 
     init {
-        refreshAll()
+        if (repository.useMockData) {
+            _uiState.value = _uiState.value.copy(initializing = false)
+        } else {
+            restoreSessionOrRefresh()
+        }
+    }
+
+    private fun restoreSessionOrRefresh() = viewModelScope.launch {
+        val token = appContext?.let { com.stephan.mobil.security.SecurityUtil.getAuthToken(it) }
+        if (!token.isNullOrBlank() && !repository.useMockData) {
+            val result = repository.getCurrentUser()
+            if (result.isSuccess) {
+                val user = result.getOrThrow()
+                val kycInfo = repository.getKycStatus().getOrNull()
+                _uiState.value = _uiState.value.copy(
+                    initializing = false,
+                    user = if (kycInfo != null) user.copy(kycStatus = kycInfo.status) else user,
+                    kycRejectionReason = kycInfo?.rejectionReason
+                )
+                refreshAll()
+                return@launch
+            } else {
+                appContext?.let { com.stephan.mobil.security.SecurityUtil.clearData(it) }
+            }
+        }
+        _uiState.value = _uiState.value.copy(initializing = false, loading = false)
     }
 
     fun setMockMode(enabled: Boolean) {
@@ -51,26 +79,35 @@ class BankViewModel(private val repository: BankRepository, private val appConte
     }
 
     fun login(email: String, password: String) = viewModelScope.launch {
+        _uiState.value = _uiState.value.copy(loading = true, error = null)
         repository.login(email, password).fold(
             onSuccess = { user ->
                 val kycInfo = if (!repository.useMockData) repository.getKycStatus().getOrNull() else null
                 _uiState.value = _uiState.value.copy(
+                    loading = false,
                     user = if (kycInfo != null) user.copy(kycStatus = kycInfo.status) else user,
                     kycRejectionReason = kycInfo?.rejectionReason,
                     message = "Connecte"
                 )
+                refreshAll()
             },
-            onFailure = { _uiState.value = _uiState.value.copy(error = it.message) }
+            onFailure = {
+                _uiState.value = _uiState.value.copy(loading = false, error = it.message ?: "Connexion impossible")
+            }
         )
-        refreshAll()
     }
 
     fun register(name: String, email: String, phone: String, password: String) = viewModelScope.launch {
+        _uiState.value = _uiState.value.copy(loading = true, error = null)
         repository.register(name, email, phone, password).fold(
-            onSuccess = { _uiState.value = _uiState.value.copy(user = it, message = "Compte cree") },
-            onFailure = { _uiState.value = _uiState.value.copy(error = it.message) }
+            onSuccess = {
+                _uiState.value = _uiState.value.copy(loading = false, user = it, message = "Compte cree")
+                refreshAll()
+            },
+            onFailure = {
+                _uiState.value = _uiState.value.copy(loading = false, error = it.message ?: "Inscription impossible")
+            }
         )
-        refreshAll()
     }
 
     fun refreshAll() = viewModelScope.launch {
@@ -79,6 +116,7 @@ class BankViewModel(private val repository: BankRepository, private val appConte
         val transactions = repository.getTransactions()
         val beneficiaries = repository.getBeneficiaries()
         val cards = repository.getCards()
+        val scheduledWithdrawals = repository.getScheduledWithdrawals()
 
         _uiState.value = _uiState.value.copy(
             loading = false,
@@ -86,6 +124,7 @@ class BankViewModel(private val repository: BankRepository, private val appConte
             transactions = transactions.getOrDefault(emptyList()),
             beneficiaries = beneficiaries.getOrDefault(emptyList()),
             cards = cards.getOrDefault(emptyList()),
+            scheduledWithdrawals = scheduledWithdrawals.getOrDefault(emptyList()),
             error = listOf(balance, transactions, beneficiaries, cards).firstOrNull { it.isFailure }?.exceptionOrNull()?.message
         )
     }
@@ -108,6 +147,93 @@ class BankViewModel(private val repository: BankRepository, private val appConte
             onSuccess = {
                 _uiState.value = _uiState.value.copy(message = "Beneficiaire supprime")
                 refreshAll()
+            },
+            onFailure = { _uiState.value = _uiState.value.copy(error = it.message) }
+        )
+    }
+
+    fun deposit(accountId: Int, amount: Double, method: String, phone: String?) = viewModelScope.launch {
+        _uiState.value = _uiState.value.copy(isDepositing = true, depositPending = null, depositSuccess = null)
+        repository.deposit(DepositRequest(accountId, amount, method, phone.takeIf { !it.isNullOrBlank() })).fold(
+            onSuccess = {
+                _uiState.value = _uiState.value.copy(isDepositing = false, depositPending = it)
+            },
+            onFailure = {
+                _uiState.value = _uiState.value.copy(isDepositing = false, error = it.message)
+            }
+        )
+    }
+
+    fun confirmDeposit() = viewModelScope.launch {
+        val reference = _uiState.value.depositPending?.reference ?: return@launch
+        _uiState.value = _uiState.value.copy(isConfirmingDeposit = true)
+        repository.confirmDeposit(reference).fold(
+            onSuccess = {
+                _uiState.value = _uiState.value.copy(
+                    isConfirmingDeposit = false,
+                    depositPending = null,
+                    depositSuccess = it,
+                )
+                refreshAll()
+            },
+            onFailure = {
+                _uiState.value = _uiState.value.copy(isConfirmingDeposit = false, error = it.message)
+            }
+        )
+    }
+
+    fun cancelDeposit() = viewModelScope.launch {
+        val reference = _uiState.value.depositPending?.reference ?: return@launch
+        repository.cancelDeposit(reference).fold(
+            onSuccess = { _uiState.value = _uiState.value.copy(depositPending = null) },
+            onFailure = { _uiState.value = _uiState.value.copy(depositPending = null) }
+        )
+    }
+
+    fun clearDepositResult() {
+        _uiState.value = _uiState.value.copy(depositPending = null, depositSuccess = null)
+    }
+
+    fun createScheduledWithdrawal(
+        senderAccountId: Int,
+        beneficiaryId: Int,
+        amount: Double,
+        note: String,
+        frequencyDays: Int
+    ) = viewModelScope.launch {
+        _uiState.value = _uiState.value.copy(loading = true, error = null)
+        repository.createScheduledWithdrawal(
+            ScheduledWithdrawalRequest(senderAccountId, beneficiaryId, amount, note.ifBlank { null }, frequencyDays)
+        ).fold(
+            onSuccess = {
+                _uiState.value = _uiState.value.copy(
+                    loading = false,
+                    message = "Retrait automatique programmé tous les $frequencyDays jour(s).",
+                    scheduledWithdrawals = _uiState.value.scheduledWithdrawals + it
+                )
+            },
+            onFailure = { _uiState.value = _uiState.value.copy(loading = false, error = it.message) }
+        )
+    }
+
+    fun toggleScheduledWithdrawal(id: Int) = viewModelScope.launch {
+        repository.toggleScheduledWithdrawal(id).fold(
+            onSuccess = { updated ->
+                _uiState.value = _uiState.value.copy(
+                    scheduledWithdrawals = _uiState.value.scheduledWithdrawals.map { if (it.id == id) updated else it }
+                )
+            },
+            onFailure = { _uiState.value = _uiState.value.copy(error = it.message) }
+        )
+    }
+
+    fun deleteScheduledWithdrawal(id: Int) = viewModelScope.launch {
+        repository.deleteScheduledWithdrawal(id).fold(
+            onSuccess = {
+                _uiState.value = _uiState.value.copy(
+                    scheduledWithdrawals = _uiState.value.scheduledWithdrawals.filter { it.id != id },
+                    message = "Retrait automatique supprimé."
+                )
             },
             onFailure = { _uiState.value = _uiState.value.copy(error = it.message) }
         )
@@ -153,11 +279,36 @@ class BankViewModel(private val repository: BankRepository, private val appConte
         )
     }
 
+    fun updateCardLimit(cardId: Int, limit: Double) = viewModelScope.launch {
+        repository.updateCardLimit(cardId, limit).fold(
+            onSuccess = { refreshAll() },
+            onFailure = { _uiState.value = _uiState.value.copy(error = it.message) }
+        )
+    }
+
     fun toggleCard(cardId: Int) = viewModelScope.launch {
         repository.toggleCard(cardId).fold(
             onSuccess = { refreshAll() },
             onFailure = { _uiState.value = _uiState.value.copy(error = it.message) }
         )
+    }
+
+    fun deleteCard(cardId: Int) = viewModelScope.launch {
+        repository.deleteCard(cardId).fold(
+            onSuccess = { refreshAll() },
+            onFailure = { _uiState.value = _uiState.value.copy(error = it.message) }
+        )
+    }
+
+    fun revealCard(cardId: Int) = viewModelScope.launch {
+        repository.revealCard(cardId).fold(
+            onSuccess = { _uiState.value = _uiState.value.copy(revealedCard = it) },
+            onFailure = { _uiState.value = _uiState.value.copy(error = it.message) }
+        )
+    }
+
+    fun clearRevealedCard() {
+        _uiState.value = _uiState.value.copy(revealedCard = null)
     }
 
     fun notify(message: String) {
@@ -255,6 +406,40 @@ class BankViewModel(private val repository: BankRepository, private val appConte
         )
     }
 
+    // ── Card payment confirmation ─────────────────────────────────────────────
+
+    fun loadPendingCardPayments() = viewModelScope.launch {
+        repository.getPendingCardPayments().fold(
+            onSuccess = { _uiState.value = _uiState.value.copy(pendingCardPayments = it) },
+            onFailure = { }
+        )
+    }
+
+    fun confirmCardPayment(reference: String) = viewModelScope.launch {
+        repository.confirmCardPayment(reference).fold(
+            onSuccess = {
+                _uiState.value = _uiState.value.copy(
+                    pendingCardPayments = _uiState.value.pendingCardPayments.filter { it.reference != reference },
+                    message = "Paiement confirmé ✓"
+                )
+                refreshAll()
+            },
+            onFailure = { _uiState.value = _uiState.value.copy(error = it.message) }
+        )
+    }
+
+    fun declineCardPayment(reference: String) = viewModelScope.launch {
+        repository.declineCardPayment(reference).fold(
+            onSuccess = {
+                _uiState.value = _uiState.value.copy(
+                    pendingCardPayments = _uiState.value.pendingCardPayments.filter { it.reference != reference },
+                    message = "Paiement refusé"
+                )
+            },
+            onFailure = { _uiState.value = _uiState.value.copy(error = it.message) }
+        )
+    }
+
     fun markNotificationRead(id: Int) = viewModelScope.launch {
         repository.markNotificationRead(id).fold(
             onSuccess = { loadNotifications() },
@@ -269,64 +454,28 @@ class BankViewModel(private val repository: BankRepository, private val appConte
         )
     }
 
-    // ── Crypto ──────────────────────────────────────────────────────────────
+    // ── Profile ─────────────────────────────────────────────────────────────
 
-    fun loadCrypto() = viewModelScope.launch {
-        _uiState.value = _uiState.value.copy(cryptoLoading = true)
-        val wallets = repository.getCryptoWallets()
-        val markets = repository.getCoinMarkets()
-        _uiState.value = _uiState.value.copy(
-            cryptoLoading = false,
-            cryptoWallets = wallets.getOrDefault(emptyList()),
-            cryptoMarkets = markets.getOrDefault(emptyList()),
-            error = if (markets.isFailure) "Impossible de charger les prix crypto" else null
-        )
-    }
-
-    fun loadCryptoChart(coinId: String, days: String = "1") = viewModelScope.launch {
-        repository.getCoinChart(coinId, days).fold(
-            onSuccess = { _uiState.value = _uiState.value.copy(cryptoChart = it) },
-            onFailure = { _uiState.value = _uiState.value.copy(cryptoChart = emptyList()) }
-        )
-    }
-
-    fun buyCrypto(symbol: String, amountMga: Double, priceUsd: Double) = viewModelScope.launch {
-        val mga = _uiState.value.mgaPerUsd
-        repository.buyCrypto(symbol, amountMga, priceUsd, mga).fold(
-            onSuccess = {
-                _uiState.value = _uiState.value.copy(message = "Achat $symbol effectué ✓")
-                loadCrypto()
-                refreshAll()
+    fun updateProfile(currentPassword: String, name: String? = null, email: String? = null, phone: String? = null) = viewModelScope.launch {
+        _uiState.value = _uiState.value.copy(loading = true, error = null)
+        repository.updateProfile(currentPassword, name, email, phone).fold(
+            onSuccess = { updatedUser ->
+                _uiState.value = _uiState.value.copy(loading = false, user = updatedUser, message = "Profil mis à jour.")
             },
-            onFailure = { _uiState.value = _uiState.value.copy(error = it.message) }
+            onFailure = { _uiState.value = _uiState.value.copy(loading = false, error = it.message) }
         )
-    }
-
-    fun sellCrypto(symbol: String, cryptoAmount: Double, priceUsd: Double) = viewModelScope.launch {
-        val mga = _uiState.value.mgaPerUsd
-        repository.sellCrypto(symbol, cryptoAmount, priceUsd, mga).fold(
-            onSuccess = {
-                val totalMga = it.totalMga ?: (cryptoAmount * priceUsd * mga)
-                _uiState.value = _uiState.value.copy(
-                    message = "Vente $symbol → ${String.format("%,.0f", totalMga)} MGA ✓"
-                )
-                loadCrypto()
-                refreshAll()
-            },
-            onFailure = { _uiState.value = _uiState.value.copy(error = it.message) }
-        )
-    }
-
-    fun sendCrypto(symbol: String, cryptoAmount: Double, toAddress: String, priceUsd: Double) = viewModelScope.launch {
-        val mga = _uiState.value.mgaPerUsd
-        repository.sendCrypto(symbol, cryptoAmount, toAddress, priceUsd, mga).fold(
-            onSuccess = { _uiState.value = _uiState.value.copy(message = "Envoi $symbol confirmé ✓") },
-            onFailure = { _uiState.value = _uiState.value.copy(error = it.message) }
-        )
-        loadCrypto()
     }
 
     // ── KYC ─────────────────────────────────────────────────────────────────
+
+    fun refreshKycStatus() = viewModelScope.launch {
+        val kycInfo = repository.getKycStatus().getOrNull() ?: return@launch
+        val currentUser = _uiState.value.user ?: return@launch
+        _uiState.value = _uiState.value.copy(
+            user = currentUser.copy(kycStatus = kycInfo.status),
+            kycRejectionReason = kycInfo.rejectionReason
+        )
+    }
 
     fun submitKyc(cinFullName: String, cinRectoUri: Uri, cinVersoUri: Uri) = viewModelScope.launch {
         _uiState.value = _uiState.value.copy(kycSubmitting = true, error = null)
@@ -351,7 +500,7 @@ class BankViewModel(private val repository: BankRepository, private val appConte
 
     fun logout() = viewModelScope.launch {
         repository.logout()
-        _uiState.value = BankUiState(mockMode = repository.useMockData)
+        _uiState.value = BankUiState(initializing = false, loading = false)
     }
 }
 

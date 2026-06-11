@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SCpay — Profil</title>
+<link rel="stylesheet" href="scpay-design.css">
+<style>
+.settings-row {
+  display:flex;align-items:center;gap:12px;padding:14px 0;cursor:pointer;
+}
+.settings-icon { width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0; }
+.settings-icon svg { width:18px;height:18px;fill:#fff; }
+.channel-pill { flex:1;padding:8px 0;text-align:center;border-radius:8px;font-size:12px;font-weight:700;color:var(--muted);border:1px solid var(--outline);cursor:pointer; }
+.channel-pill.active { color:var(--magenta);background:var(--magenta-soft);border-color:rgba(255,0,122,0.3); }
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="statusbar">
+    <span class="time">9:41</span>
+    <div class="icons">
+      <svg viewBox="0 0 24 24"><path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/></svg>
+      <svg viewBox="0 0 24 24"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z"/></svg>
+    </div>
+  </div>
+
+  <div class="screen" style="padding:0 16px;">
+    <!-- Avatar Header -->
+    <div style="display:flex;flex-direction:column;align-items:center;padding:20px 0 24px;">
+      <div class="avatar-lg" style="margin-bottom:14px;">
+        <div class="avatar-lg-inner">
+          <svg viewBox="0 0 24 24" style="width:46px;height:46px;fill:var(--magenta);"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+        </div>
+      </div>
+      <div style="font-family:'Hanken Grotesk',sans-serif;font-size:20px;font-weight:700;color:#fff;margin-bottom:4px;">Stephan Arovana</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:10px;">stephan@scpay.mg</div>
+      <div style="display:flex;gap:8px;">
+        <span class="badge badge-magenta">Premium</span>
+        <span class="badge badge-success">KYC Vérifié</span>
+      </div>
+    </div>
+
+    <!-- Security & Settings -->
+    <div class="card" style="margin-bottom:16px;">
+      <div style="font-family:'Hanken Grotesk',sans-serif;font-size:14px;font-weight:700;color:#fff;margin-bottom:4px;">Sécurité & Paramètres</div>
+      <div class="divider" style="margin:10px 0;"></div>
+
+      <div class="settings-row">
+        <div class="settings-icon" style="background:rgba(91,141,239,0.15);"><svg viewBox="0 0 24 24" style="fill:var(--blue);"><path d="M4 6h18V4H4c-1.1 0-2 .9-2 2v11H0v3h14v-3H4V6zm19 2h-6c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h6c.55 0 1-.45 1-1V9c0-.55-.45-1-1-1zm-1 9h-4v-7h4v7z"/></svg></div>
+        <div style="flex:1;">
+          <div style="font-size:14px;font-weight:500;color:var(--white);">Mode Démo / Mock</div>
+          <div class="label">Utiliser des fausses données hors réseau</div>
+        </div>
+        <div class="toggle"></div>
+      </div>
+      <div class="divider"></div>
+
+      <div class="settings-row">
+        <div class="settings-icon" style="background:rgba(171,111,216,0.15);"><svg viewBox="0 0 24 24" style="fill:#AB6FD8;"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9-4.03-9-9-9zm0 16c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7zm0-11.5c-2.49 0-4.5 2.01-4.5 4.5S9.51 16.5 12 16.5s4.5-2.01 4.5-4.5S14.49 7.5 12 7.5z"/></svg></div>
+        <div style="flex:1;">
+          <div style="font-size:14px;font-weight:500;color:var(--white);">Thème sombre</div>
+          <div class="label">Basculer toute l'application en dark mode</div>
+        </div>
+        <div class="toggle on"></div>
+      </div>
+      <div class="divider"></div>
+
+      <div class="settings-row">
+        <div class="settings-icon" style="background:var(--magenta-soft);"><svg viewBox="0 0 24 24" style="fill:var(--magenta);"><path d="M17.81 4.47c-.08 0-.16-.02-.23-.06C15.66 3.42 14 3 12.01 3c-1.98 0-3.86.47-5.57 1.41-.24.13-.54.04-.68-.2-.13-.24-.04-.55.2-.68C7.82 2.52 9.86 2 12.01 2c2.13 0 3.99.47 6.03 1.52.25.13.34.43.21.67-.09.18-.26.28-.44.28zM3.5 9.72c-.1 0-.2-.03-.29-.09-.23-.16-.28-.47-.12-.7.99-1.4 2.25-2.5 3.75-3.27C9.98 4.04 14 4.03 17.15 6.65c.22.18.25.5.07.72-.18.22-.5.25-.72.07C13.84 5.15 10.25 5.16 7.4 6.6c-1.4.7-2.56 1.7-3.47 3-.08.12-.21.18-.43.12zm6.35 2.77c-.1 0-.2-.03-.29-.09-.47-.32-.47-.8-.46-.97.01-.17.02-.37-.04-.55-.06-.18-.17-.32-.32-.42-.13-.09-.2-.24-.22-.39-.02-.15.04-.31.15-.43.56-.57 1.32-.85 2.06-.77.63.07 1.21.37 1.63.84.17.19.26.44.25.69-.01.26-.11.5-.29.68-.49.49-1.07.73-1.47.91zM12 22.25c-2.6 0-5.11-.98-7.07-2.76-.19-.18-.21-.49-.03-.68.18-.19.49-.21.68-.03C7.27 20.43 9.57 21.25 12 21.25s4.73-.82 6.42-2.47c.19-.18.5-.17.68.03.18.19.17.5-.03.68-1.96 1.78-4.47 2.76-7.07 2.76z"/></svg></div>
+        <div style="flex:1;">
+          <div style="font-size:14px;font-weight:500;color:var(--white);">Déverrouillage Biométrique</div>
+          <div class="label">Empreinte digitale ou Face ID</div>
+        </div>
+        <div class="toggle on"></div>
+      </div>
+      <div class="divider"></div>
+
+      <div class="settings-row">
+        <div class="settings-icon" style="background:rgba(244,164,40,0.15);"><svg viewBox="0 0 24 24" style="fill:var(--warning);"><path d="M12.65 10C11.83 7.67 9.61 6 7 6c-3.31 0-6 2.69-6 6s2.69 6 6 6c2.61 0 4.83-1.67 5.65-4H17v4h4v-4h2v-4H12.65zM7 14c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/></svg></div>
+        <div style="flex:1;">
+          <div style="font-size:14px;font-weight:500;color:var(--white);">Changer le PIN</div>
+          <div class="label">Modifier votre code secret</div>
+        </div>
+        <svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:var(--muted);"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg>
+      </div>
+    </div>
+
+    <!-- Add Beneficiary -->
+    <div class="card" style="margin-bottom:16px;">
+      <div style="font-family:'Hanken Grotesk',sans-serif;font-size:14px;font-weight:700;color:#fff;margin-bottom:14px;">Ajouter un Bénéficiaire</div>
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div style="position:relative;">
+          <svg class="input-icon" viewBox="0 0 24 24"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-1V1h-2zm3 18H5V8h14v11z"/></svg>
+          <input class="input-field has-icon" type="text" placeholder="Nom Complet">
+        </div>
+        <div style="position:relative;">
+          <svg class="input-icon" viewBox="0 0 24 24"><path d="M21 18v1c0 1.1-.9 2-2 2H5c-1.11 0-2-.9-2-2V5c0-1.1.89-2 2-2h14c1.1 0 2 .9 2 2v1h-9c-1.11 0-2 .9-2 2v8c0 1.1.89 2 2 2h9z"/></svg>
+          <input class="input-field has-icon" type="text" placeholder="Numéro de Compte">
+        </div>
+        <div style="position:relative;">
+          <svg class="input-icon" viewBox="0 0 24 24"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg>
+          <input class="input-field has-icon" type="text" placeholder="Téléphone Mobile Money (Optionnel)">
+        </div>
+        <div style="display:flex;gap:8px;">
+          <div class="channel-pill active">Banque</div>
+          <div class="channel-pill">MVola</div>
+          <div class="channel-pill">Orange</div>
+        </div>
+        <button class="btn-primary" style="height:46px;font-size:14px;">
+          <svg viewBox="0 0 24 24" style="width:16px;height:16px;fill:#fff;"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+          Enregistrer le bénéficiaire
+        </button>
+      </div>
+    </div>
+
+    <!-- Mon Compte -->
+    <div class="card" style="margin-bottom:16px;">
+      <div style="font-family:'Hanken Grotesk',sans-serif;font-size:14px;font-weight:700;color:#fff;margin-bottom:4px;">Mon Compte</div>
+      <div class="divider" style="margin:10px 0;"></div>
+      <div class="settings-row">
+        <div class="settings-icon" style="background:rgba(93,187,130,0.15);"><svg viewBox="0 0 24 24" style="fill:var(--success);"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg></div>
+        <div style="flex:1;"><div style="font-size:14px;color:var(--white);">Mon IBAN / RIB</div></div>
+        <svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:var(--muted);"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg>
+      </div>
+      <div class="divider"></div>
+      <div class="settings-row">
+        <div class="settings-icon" style="background:rgba(91,141,239,0.15);"><svg viewBox="0 0 24 24" style="fill:var(--blue);"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg></div>
+        <div style="flex:1;"><div style="font-size:14px;color:var(--white);">Relevé de compte</div></div>
+        <svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:var(--muted);"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg>
+      </div>
+      <div class="divider"></div>
+      <div class="settings-row">
+        <div class="settings-icon" style="background:var(--magenta-soft);"><svg viewBox="0 0 24 24" style="fill:var(--magenta);"><path d="M20 6h-2.18c.07-.44.18-.86.18-1.3C18 2.12 15.88 0 13.3 0c-1.3 0-2.4.52-3.27 1.37L8 4.41 5.97 1.37C5.1.52 4 0 2.7 0 1.12 0-.01 1.12 0 2.7c0 .44.1.86.18 1.3H0v2h2v13c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8h2V6zM8 19H4v-9h4v9zm6 0h-4v-9h4v9zm2-13.43c-.41.43-1 .43-1.43 0l-2.14-2.14C12.08 3.08 12.5 2 13.3 2c.77 0 1.4.63 1.4 1.4s-.63 1.17-1.4 1.17h-.71l1.41 1.4zM8 4l-1.43-1.43C6.14 1.63 5.5 1 4.73 1s-1.4.63-1.4 1.4c0 .77.63 1.4 1.4 1.4h-.71L6.43 4.43C5.99 4.43 5.59 4.43 8 4z"/></svg></div>
+        <div style="flex:1;">
+          <div style="font-size:14px;color:var(--white);">Programme de parrainage</div>
+          <div class="label">Gagnez 40% de commissions</div>
+        </div>
+        <span class="badge badge-magenta">Nouveau</span>
+      </div>
+    </div>
+
+    <!-- Logout -->
+    <button class="btn-danger-soft" style="margin-bottom:30px;">
+      <svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:var(--danger);"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
+      Se déconnecter
+    </button>
+  </div>
+
+  <nav class="bottom-nav">
+    <a class="nav-item" href="01-dashboard.html"><svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg><span>Accueil</span></a>
+    <a class="nav-item" href="03-history.html"><svg viewBox="0 0 24 24"><path d="M7 2v11h3v9l7-12h-4l4-8z"/></svg><span>Historique</span></a>
+    <a class="nav-item" href="02-transfer.html"><svg viewBox="0 0 24 24"><path d="M6.99 11L3 15l3.99 4v-3H14v-2H6.99v-3zM21 9l-3.99-4v3H10v2h7.01v3L21 9z"/></svg><span>Virement</span></a>
+    <a class="nav-item" href="05-cards.html"><svg viewBox="0 0 24 24"><path d="M20 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg><span>Cartes</span></a>
+    <a class="nav-item active" href="06-profile.html"><svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg><span>Profil</span></a>
+  </nav>
+</div>
+</body>
+</html>

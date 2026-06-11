@@ -3,11 +3,16 @@ package com.stephan.mobil.ui.theme
 import android.app.Activity
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
-import androidx.compose.ui.graphics.toArgb
+import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
+
+val LocalDarkMode = staticCompositionLocalOf { false }
 
 private val SCpayDarkColorScheme = darkColorScheme(
     primary                = BrandPrimary,
@@ -29,12 +34,32 @@ private val SCpayDarkColorScheme = darkColorScheme(
     outline                = BgSurfaceTop,
 )
 
+private val SCpayLightColorScheme = lightColorScheme(
+    primary                = BrandPrimary,
+    onPrimary              = BrandOnPrimary,
+    primaryContainer       = BrandPrimaryLight,
+    onPrimaryContainer     = TextOnPrimary,
+    secondary              = Color(0xFF737780),
+    onSecondary            = Color(0xFF17181C),
+    secondaryContainer     = LineColor,
+    onSecondaryContainer   = Color(0xFF17181C),
+    background             = Color.White,
+    onBackground           = Color(0xFF17181C),
+    surface                = SoftBackground,
+    onSurface              = Color(0xFF17181C),
+    surfaceVariant         = LightBackground,
+    onSurfaceVariant       = Color(0xFF737780),
+    error                  = SemanticDanger,
+    onError                = TextOnPrimary,
+    outline                = Color(0xFFE5E7EB),
+)
+
 @Composable
 fun MobilTheme(
-    darkTheme: Boolean = true,
-    dynamicColor: Boolean = false,
+    darkTheme: Boolean = false,
     content: @Composable () -> Unit
 ) {
+    val colorScheme = if (darkTheme) SCpayDarkColorScheme else SCpayLightColorScheme
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
@@ -43,15 +68,17 @@ fun MobilTheme(
             window.statusBarColor = android.graphics.Color.TRANSPARENT
             window.navigationBarColor = android.graphics.Color.TRANSPARENT
             WindowCompat.getInsetsController(window, view).apply {
-                isAppearanceLightStatusBars = false
-                isAppearanceLightNavigationBars = false
+                isAppearanceLightStatusBars = !darkTheme
+                isAppearanceLightNavigationBars = !darkTheme
             }
         }
     }
 
-    MaterialTheme(
-        colorScheme = SCpayDarkColorScheme,
-        typography = Typography,
-        content = content
-    )
+    CompositionLocalProvider(LocalDarkMode provides darkTheme) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = Typography,
+            content = content
+        )
+    }
 }
