@@ -3,7 +3,7 @@
 @section('page-title', 'Vérification KYC — ' . $user->name)
 
 @section('content')
-<div class="w-full space-y-5">
+<div class="w-full space-y-5" x-data="{ lightbox: null, lightboxZoomed: false }">
 
     <!-- Header card -->
     <div class="card p-5">
@@ -89,16 +89,17 @@
             <div>
                 <p class="text-label-md text-on-surface-variant uppercase tracking-wide mb-3">CIN Recto</p>
                 @if($user->cin_recto_url)
-                    <a href="{{ $user->cin_recto_url }}" target="_blank" class="block group relative rounded-xl overflow-hidden border border-gray-200 hover:border-primary-container transition-all">
+                    <div @click="lightbox = '{{ $user->cin_recto_url }}'; lightboxZoomed = false"
+                         class="block group relative rounded-xl overflow-hidden border border-gray-200 hover:border-primary-container transition-all cursor-zoom-in">
                         <img src="{{ $user->cin_recto_url }}" alt="CIN Recto"
                              class="w-full object-cover max-h-64 bg-gray-50">
-                        <div class="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all flex items-center justify-center">
-                            <span class="material-symbols-outlined text-white opacity-0 group-hover:opacity-100 text-[32px] transition-all">open_in_new</span>
+                        <div class="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center">
+                            <span class="material-symbols-outlined text-white opacity-0 group-hover:opacity-100 text-[40px] transition-all drop-shadow-lg">zoom_in</span>
                         </div>
-                    </a>
+                    </div>
                     <p class="text-label-md text-on-surface-variant mt-2 flex items-center gap-1">
                         <span class="material-symbols-outlined text-[14px]">zoom_in</span>
-                        Cliquez pour agrandir
+                        Cliquez pour zoomer
                     </p>
                 @else
                     <div class="w-full h-40 border-2 border-dashed border-gray-200 rounded-xl flex items-center justify-center">
@@ -111,22 +112,62 @@
             <div>
                 <p class="text-label-md text-on-surface-variant uppercase tracking-wide mb-3">CIN Verso</p>
                 @if($user->cin_verso_url)
-                    <a href="{{ $user->cin_verso_url }}" target="_blank" class="block group relative rounded-xl overflow-hidden border border-gray-200 hover:border-primary-container transition-all">
+                    <div @click="lightbox = '{{ $user->cin_verso_url }}'; lightboxZoomed = false"
+                         class="block group relative rounded-xl overflow-hidden border border-gray-200 hover:border-primary-container transition-all cursor-zoom-in">
                         <img src="{{ $user->cin_verso_url }}" alt="CIN Verso"
                              class="w-full object-cover max-h-64 bg-gray-50">
-                        <div class="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all flex items-center justify-center">
-                            <span class="material-symbols-outlined text-white opacity-0 group-hover:opacity-100 text-[32px] transition-all">open_in_new</span>
+                        <div class="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center">
+                            <span class="material-symbols-outlined text-white opacity-0 group-hover:opacity-100 text-[40px] transition-all drop-shadow-lg">zoom_in</span>
                         </div>
-                    </a>
+                    </div>
                     <p class="text-label-md text-on-surface-variant mt-2 flex items-center gap-1">
                         <span class="material-symbols-outlined text-[14px]">zoom_in</span>
-                        Cliquez pour agrandir
+                        Cliquez pour zoomer
                     </p>
                 @else
                     <div class="w-full h-40 border-2 border-dashed border-gray-200 rounded-xl flex items-center justify-center">
                         <p class="text-on-surface-variant text-body-md">Aucun document</p>
                     </div>
                 @endif
+            </div>
+
+            <!-- Lightbox -->
+            <div x-show="lightbox"
+                 x-cloak
+                 class="fixed inset-0 z-[100] flex items-center justify-center bg-black/90"
+                 @keydown.escape.window="lightbox = null"
+                 x-transition:enter="transition ease-out duration-200"
+                 x-transition:enter-start="opacity-0"
+                 x-transition:enter-end="opacity-100"
+                 x-transition:leave="transition ease-in duration-150"
+                 x-transition:leave-start="opacity-100"
+                 x-transition:leave-end="opacity-0">
+                <!-- Backdrop click closes -->
+                <div class="absolute inset-0" @click="lightbox = null"></div>
+                <!-- Image container -->
+                <div class="relative z-10 max-w-5xl max-h-screen p-4 flex flex-col items-center gap-3">
+                    <img :src="lightbox"
+                         :class="lightboxZoomed ? 'scale-150 cursor-zoom-out' : 'scale-100 cursor-zoom-in'"
+                         @click.stop="lightboxZoomed = !lightboxZoomed"
+                         class="max-h-[80vh] max-w-full object-contain rounded-xl shadow-2xl transition-transform duration-300 origin-center">
+                    <div class="flex items-center gap-3">
+                        <button @click.stop="lightboxZoomed = !lightboxZoomed"
+                                class="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 text-white text-sm font-medium px-4 py-2 rounded-full transition-all">
+                            <span class="material-symbols-outlined text-[16px]" x-text="lightboxZoomed ? 'zoom_out' : 'zoom_in'"></span>
+                            <span x-text="lightboxZoomed ? 'Dézoomer' : 'Zoomer'"></span>
+                        </button>
+                        <a :href="lightbox" target="_blank"
+                           class="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 text-white text-sm font-medium px-4 py-2 rounded-full transition-all">
+                            <span class="material-symbols-outlined text-[16px]">open_in_new</span>
+                            Ouvrir original
+                        </a>
+                        <button @click="lightbox = null"
+                                class="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 text-white text-sm font-medium px-4 py-2 rounded-full transition-all">
+                            <span class="material-symbols-outlined text-[16px]">close</span>
+                            Fermer
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

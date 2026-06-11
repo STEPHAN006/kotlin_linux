@@ -24,4 +24,11 @@ interface CoinGeckoApiService {
         @Query("vs_currency") currency: String = "usd",
         @Query("days") days: String = "1"
     ): Response<CoinChartData>
+
+    @GET("coins/{id}/ohlc")
+    suspend fun getOhlc(
+        @Path("id") id: String,
+        @Query("vs_currency") currency: String = "usd",
+        @Query("days") days: String = "7"
+    ): Response<List<List<Double>>>
 }

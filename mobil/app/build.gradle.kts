@@ -3,11 +3,17 @@ import java.util.Properties
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.google.services)
+    alias(libs.plugins.ksp)
 }
 
 val keyProps = Properties()
 val keyFile = rootProject.file("key.properties")
 if (keyFile.exists()) keyProps.load(keyFile.inputStream())
+
+val localProps = Properties()
+val localFile = rootProject.file("local.properties")
+if (localFile.exists()) localProps.load(localFile.inputStream())
 
 android {
     namespace = "com.stephan.mobil"
@@ -44,6 +50,15 @@ android {
                 "proguard-rules.pro"
             )
             signingConfig = signingConfigs.getByName("release")
+            buildConfigField("String", "API_BASE_URL", "\"https://api.scpay.mg/api/\"")
+            buildConfigField("String", "API_HOST",     "\"api.scpay.mg\"")
+            buildConfigField("Boolean", "ENABLE_HTTP_LOGGING", "false")
+        }
+        debug {
+            val devUrl = localProps.getProperty("DEV_API_URL") ?: "http://10.0.2.2:8000/api/"
+            buildConfigField("String", "API_BASE_URL", "\"$devUrl\"")
+            buildConfigField("String", "API_HOST",     "\"${devUrl.removePrefix("http://").removePrefix("https://").substringBefore(":")}\"")
+            buildConfigField("Boolean", "ENABLE_HTTP_LOGGING", "true")
         }
     }
     compileOptions {
@@ -52,6 +67,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -93,6 +109,19 @@ dependencies {
 
     // WorkManager
     implementation("androidx.work:work-runtime-ktx:2.9.0")
+
+    // MPAndroidChart — graphique dépenses par catégorie
+    implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
+
+    // Room — cache local + mode hors-ligne
+    implementation(libs.room.runtime)
+    implementation(libs.room.ktx)
+    ksp(libs.room.compiler)
+
+    // Firebase — notifications push FCM
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.messaging)
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

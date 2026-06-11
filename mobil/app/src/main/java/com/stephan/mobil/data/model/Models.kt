@@ -64,7 +64,9 @@ data class Transaction(
     val category: String? = null,
     val description: String? = null,
     val reference: String? = null,
-    @SerializedName("created_at") val createdAt: String? = null
+    @SerializedName("created_at") val createdAt: String? = null,
+    @SerializedName("balance_after") val balanceAfter: Double? = null,
+    @SerializedName("date_human") val dateHuman: String? = null
 ) {
     val isCredit: Boolean get() = type == "credit"
 }
@@ -100,6 +102,12 @@ data class Card(
 data class CreateCardRequest(
     @SerializedName("account_id") val accountId: Int,
     @SerializedName("daily_limit") val dailyLimit: Double
+)
+
+data class CardDetails(
+    @SerializedName("card_number") val cardNumber: String,
+    val cvv: String,
+    @SerializedName("expiry_date") val expiryDate: String
 )
 
 data class TransferRequest(
@@ -160,6 +168,7 @@ data class SupportMessage(
     val message: String,
     @SerializedName("is_from_agent") val isFromAgent: Boolean,
     @SerializedName("sender_name") val senderName: String,
+    @SerializedName("image_url") val imageUrl: String? = null,
     val attachments: List<SupportAttachment> = emptyList(),
     @SerializedName("created_at") val createdAt: String? = null
 )
@@ -241,11 +250,33 @@ data class CryptoSendRequest(
     @SerializedName("mga_per_usd") val mgaPerUsd: Double
 )
 
+data class CryptoSwapRequest(
+    @SerializedName("from_symbol")    val fromSymbol: String,
+    @SerializedName("to_symbol")      val toSymbol: String,
+    @SerializedName("from_amount")    val fromAmount: Double,
+    @SerializedName("from_price_usd") val fromPriceUsd: Double,
+    @SerializedName("to_price_usd")   val toPriceUsd: Double,
+    @SerializedName("mga_per_usd")    val mgaPerUsd: Double
+)
+
+data class CryptoSwapResult(
+    @SerializedName("from_symbol") val fromSymbol: String? = null,
+    @SerializedName("to_symbol")   val toSymbol: String? = null,
+    @SerializedName("from_amount") val fromAmount: Double? = null,
+    @SerializedName("to_amount")   val toAmount: Double? = null,
+    @SerializedName("tx_hash")     val txHash: String? = null
+)
+
 data class CryptoTradeResult(
     val symbol: String? = null,
     @SerializedName("crypto_amount") val cryptoAmount: Double? = null,
     @SerializedName("total_mga") val totalMga: Double? = null,
     @SerializedName("tx_hash") val txHash: String? = null
+)
+
+data class ExchangeRateResponse(
+    val result: String = "",
+    val rates: Map<String, Double> = emptyMap()
 )
 
 data class AppNotification(
@@ -254,6 +285,15 @@ data class AppNotification(
     val body: String,
     val read: Boolean = false,
     @SerializedName("created_at") val createdAt: String? = null
+)
+
+data class PendingCardPayment(
+    val reference: String,
+    val merchant: String,
+    val product: String,
+    val amount: Double,
+    @SerializedName("card_masked") val cardMasked: String?,
+    @SerializedName("expires_at") val expiresAt: String?
 )
 
 data class CryptoTxn(
@@ -266,4 +306,47 @@ data class CryptoTxn(
     @SerializedName("to_address") val toAddress: String? = null,
     @SerializedName("tx_hash") val txHash: String? = null,
     @SerializedName("created_at") val createdAt: String? = null
+)
+
+data class ScheduledWithdrawal(
+    val id: Int,
+    val amount: Double,
+    val note: String? = null,
+    @SerializedName("frequency_days") val frequencyDays: Int,
+    @SerializedName("next_run_at") val nextRunAt: String? = null,
+    @SerializedName("last_run_at") val lastRunAt: String? = null,
+    @SerializedName("run_count") val runCount: Int = 0,
+    @SerializedName("is_active") val isActive: Boolean = true,
+    val beneficiary: ScheduledWithdrawalBeneficiary? = null,
+    @SerializedName("created_at") val createdAt: String? = null
+)
+
+data class ScheduledWithdrawalBeneficiary(
+    val id: Int,
+    val name: String,
+    @SerializedName("bank_name") val bankName: String,
+    val channel: String
+)
+
+data class ScheduledWithdrawalRequest(
+    @SerializedName("sender_account_id") val senderAccountId: Int,
+    @SerializedName("beneficiary_id") val beneficiaryId: Int,
+    val amount: Double,
+    val note: String?,
+    @SerializedName("frequency_days") val frequencyDays: Int
+)
+
+data class DepositRequest(
+    @SerializedName("account_id") val accountId: Int,
+    val amount: Double,
+    val method: String,
+    val phone: String?
+)
+
+data class DepositResult(
+    val reference: String,
+    val amount: Double,
+    val method: String,
+    val status: String, // "pending" | "completed" | "cancelled"
+    @SerializedName("new_balance") val newBalance: Double? = null
 )

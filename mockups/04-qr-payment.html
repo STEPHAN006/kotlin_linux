@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SCpay — Paiement QR</title>
+<link rel="stylesheet" href="scpay-design.css">
+<style>
+.qr-code {
+  width:200px;height:200px;background:#fff;border-radius:12px;padding:12px;
+  display:grid;grid-template-columns:repeat(10,1fr);gap:2px;
+  flex-shrink:0;
+}
+.qr-cell { border-radius:2px; }
+.scan-box {
+  width:280px;height:280px;border:2px solid rgba(255,255,255,0.5);
+  border-radius:20px;position:relative;overflow:hidden;
+  background:rgba(0,0,0,0.3);
+}
+.scan-line {
+  position:absolute;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,var(--magenta),transparent);
+  animation:scan 2s linear infinite;
+}
+@keyframes scan { 0%{top:0} 50%{top:calc(100% - 2px)} 100%{top:0} }
+.corner { position:absolute;width:20px;height:20px;border-color:var(--magenta); border-style:solid; }
+.corner.tl { top:8px;left:8px;border-width:3px 0 0 3px;border-radius:4px 0 0 0; }
+.corner.tr { top:8px;right:8px;border-width:3px 3px 0 0;border-radius:0 4px 0 0; }
+.corner.bl { bottom:8px;left:8px;border-width:0 0 3px 3px;border-radius:0 0 0 4px; }
+.corner.br { bottom:8px;right:8px;border-width:0 3px 3px 0;border-radius:0 0 4px 0; }
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="statusbar">
+    <span class="time">9:41</span>
+    <div class="icons">
+      <svg viewBox="0 0 24 24"><path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/></svg>
+      <svg viewBox="0 0 24 24"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z"/></svg>
+    </div>
+  </div>
+
+  <div class="screen" style="padding:0 24px; display:flex; flex-direction:column; align-items:center;">
+    <!-- QR Icon -->
+    <div style="width:80px;height:80px;border-radius:50%;background:var(--surface-high);display:flex;align-items:center;justify-content:center;margin-top:24px;margin-bottom:20px;">
+      <svg viewBox="0 0 24 24" style="width:40px;height:40px;fill:var(--magenta);"><path d="M9.5 6.5v3h-3v-3h3M11 5H5v6h6V5zm-1.5 9.5v3h-3v-3h3M11 13H5v6h6v-6zm6.5-6.5v3h-3v-3h3M19 5h-6v6h6V5zm-6 8h1.5v1.5H13V13zm1.5 1.5H16V16h-1.5v-1.5zM16 13h1.5v1.5H16V13zm-3 3h1.5v1.5H13V16zm1.5 1.5H16V19h-1.5v-1.5zM16 16h1.5v1.5H16V16zm1.5-1.5H19V16h-1.5v-1.5zm0 3H19V19h-1.5v-1.5z"/></svg>
+    </div>
+
+    <h1 class="h1" style="margin-bottom:8px;text-align:center;">Paiement QR</h1>
+    <p style="color:var(--muted);font-size:15px;text-align:center;margin-bottom:32px;">Envoyez ou recevez de l'argent instantanément</p>
+
+    <!-- Buttons -->
+    <button class="btn-dark" style="margin-bottom:14px;">
+      <svg viewBox="0 0 24 24" style="width:20px;height:20px;fill:#fff;"><path d="M9.5 6.5v3h-3v-3h3M11 5H5v6h6V5zm-1.5 9.5v3h-3v-3h3M11 13H5v6h6v-6zm6.5-6.5v3h-3v-3h3M19 5h-6v6h6V5zm-6 8h1.5v1.5H13V13zm1.5 1.5H16V16h-1.5v-1.5z"/></svg>
+      Scanner pour payer
+    </button>
+    <button class="btn-primary" style="margin-bottom:32px;">
+      <svg viewBox="0 0 24 24" style="width:20px;height:20px;fill:#fff;"><path d="M9.5 6.5v3h-3v-3h3M11 5H5v6h6V5zm-1.5 9.5v3h-3v-3h3M11 13H5v6h6v-6zm6.5-6.5v3h-3v-3h3M19 5h-6v6h6V5z"/></svg>
+      Mon code QR
+    </button>
+
+    <!-- Compatible logos -->
+    <div style="display:flex;gap:12px;align-items:center;margin-bottom:16px;">
+      <div style="width:42px;height:42px;border-radius:50%;background:#E90038;display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;font-size:13px;">P</div>
+      <div style="width:42px;height:42px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;color:#2D5BFF;font-size:12px;">SC</div>
+      <div style="width:42px;height:42px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;color:var(--magenta);font-size:16px;">V</div>
+    </div>
+    <p style="font-size:11px;color:var(--muted);margin-bottom:24px;">Compatible MVola · SCpay · Visa</p>
+
+    <!-- My QR Code Section -->
+    <div style="width:100%;background:var(--surface-mid);border-radius:var(--radius-md);padding:20px;display:flex;flex-direction:column;align-items:center;gap:16px;border:1px solid rgba(255,255,255,0.06);">
+      <p style="font-size:14px;color:var(--muted);text-align:center;">Montrez ce code pour recevoir un paiement</p>
+      <!-- Simplified QR code visual -->
+      <div style="width:180px;height:180px;background:#fff;border-radius:10px;padding:12px;display:flex;align-items:center;justify-content:center;position:relative;">
+        <svg viewBox="0 0 100 100" style="width:100%;height:100%;">
+          <!-- QR pattern simulation -->
+          <rect x="5" y="5" width="35" height="35" rx="4" fill="none" stroke="#000" stroke-width="4"/>
+          <rect x="15" y="15" width="15" height="15" rx="2" fill="#000"/>
+          <rect x="60" y="5" width="35" height="35" rx="4" fill="none" stroke="#000" stroke-width="4"/>
+          <rect x="70" y="15" width="15" height="15" rx="2" fill="#000"/>
+          <rect x="5" y="60" width="35" height="35" rx="4" fill="none" stroke="#000" stroke-width="4"/>
+          <rect x="15" y="70" width="15" height="15" rx="2" fill="#000"/>
+          <!-- Center SCpay logo placeholder -->
+          <rect x="40" y="40" width="20" height="20" rx="3" fill="#ff007a"/>
+          <text x="50" y="53" text-anchor="middle" fill="#fff" font-size="7" font-weight="bold">SC</text>
+          <!-- Random dots -->
+          <rect x="50" y="5" width="6" height="6" rx="1" fill="#000"/>
+          <rect x="58" y="5" width="4" height="4" rx="1" fill="#000"/>
+          <rect x="5" y="50" width="4" height="4" rx="1" fill="#000"/>
+          <rect x="12" y="50" width="8" height="4" rx="1" fill="#000"/>
+          <rect x="5" y="58" width="6" height="6" rx="1" fill="#000"/>
+          <rect x="60" y="50" width="10" height="4" rx="1" fill="#000"/>
+          <rect x="75" y="50" width="6" height="4" rx="1" fill="#000"/>
+          <rect x="85" y="55" width="10" height="6" rx="1" fill="#000"/>
+          <rect x="60" y="60" width="4" height="8" rx="1" fill="#000"/>
+          <rect x="68" y="62" width="8" height="4" rx="1" fill="#000"/>
+          <rect x="80" y="65" width="6" height="6" rx="1" fill="#000"/>
+        </svg>
+      </div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--muted);">SCpay · Compte ••4892</div>
+      <div style="display:flex;gap:10px;width:100%;">
+        <button class="btn-dark" style="flex:1;height:44px;font-size:14px;">Mettre à jour</button>
+        <button class="btn-secondary" style="width:auto;padding:0 16px;height:44px;font-size:14px;">
+          <svg viewBox="0 0 24 24" style="width:16px;height:16px;fill:var(--white);"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92-1.31-2.92-2.92-2.92z"/></svg>
+          Partager
+        </button>
+      </div>
+    </div>
+
+    <button class="btn-ghost" style="margin-top:16px;margin-bottom:8px;">Retour à l'accueil</button>
+    <div style="height:24px;"></div>
+  </div>
+
+  <nav class="bottom-nav">
+    <a class="nav-item" href="01-dashboard.html"><svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg><span>Accueil</span></a>
+    <a class="nav-item" href="03-history.html"><svg viewBox="0 0 24 24"><path d="M7 2v11h3v9l7-12h-4l4-8z"/></svg><span>Historique</span></a>
+    <a class="nav-item" href="02-transfer.html"><svg viewBox="0 0 24 24"><path d="M6.99 11L3 15l3.99 4v-3H14v-2H6.99v-3zM21 9l-3.99-4v3H10v2h7.01v3L21 9z"/></svg><span>Virement</span></a>
+    <a class="nav-item" href="05-cards.html"><svg viewBox="0 0 24 24"><path d="M20 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg><span>Cartes</span></a>
+    <a class="nav-item active" href="04-qr-payment.html"><svg viewBox="0 0 24 24"><path d="M9.5 6.5v3h-3v-3h3M11 5H5v6h6V5zm-1.5 9.5v3h-3v-3h3M11 13H5v6h6v-6zm6.5-6.5v3h-3v-3h3M19 5h-6v6h6V5z"/></svg><span>QR Pay</span></a>
+  </nav>
+</div>
+</body>
+</html>

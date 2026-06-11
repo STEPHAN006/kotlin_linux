@@ -1,123 +1,117 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Transactions — SCpay Admin</title>
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f1117; color: #e5e7eb; min-height: 100vh; }
-        .nav { background: #1a1d27; border-bottom: 1px solid #2a2d3a; padding: 0 24px; display: flex; align-items: center; height: 60px; gap: 16px; }
-        .nav-brand { color: #d92c55; font-size: 20px; font-weight: 800; flex: 1; }
-        .nav a { color: #9ca3af; font-size: 14px; text-decoration: none; padding: 6px 14px; border-radius: 8px; border: 1px solid #374151; }
-        .nav a.active, .nav a:hover { background: #d92c55; color: #fff; border-color: #d92c55; }
-        .container { max-width: 1200px; margin: 0 auto; padding: 32px 24px; }
-        h1 { font-size: 24px; font-weight: 700; margin-bottom: 6px; }
-        .subtitle { color: #6b7280; font-size: 14px; margin-bottom: 24px; }
-        .filters { background: #1a1d27; border: 1px solid #2a2d3a; border-radius: 12px; padding: 18px 20px; margin-bottom: 24px; display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
-        .filter-group { display: flex; flex-direction: column; gap: 6px; }
-        label { font-size: 12px; color: #6b7280; font-weight: 500; }
-        input, select { background: #111827; border: 1px solid #374151; border-radius: 8px; color: #e5e7eb; font-size: 13px; padding: 8px 12px; outline: none; }
-        input:focus, select:focus { border-color: #d92c55; }
-        .btn { padding: 9px 20px; background: #d92c55; color: #fff; border: none; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; }
-        .btn:hover { background: #b82447; }
-        .btn-outline { background: transparent; border: 1px solid #374151; color: #9ca3af; }
-        table { width: 100%; border-collapse: collapse; background: #1a1d27; border: 1px solid #2a2d3a; border-radius: 12px; overflow: hidden; }
-        th { text-align: left; padding: 10px 16px; color: #6b7280; font-size: 11px; font-weight: 600; text-transform: uppercase; border-bottom: 1px solid #2a2d3a; }
-        td { padding: 12px 16px; border-bottom: 1px solid #1f2937; font-size: 13px; vertical-align: middle; }
-        tr:hover td { background: #111827; }
-        .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
-        .badge-credit { background: #052e16; color: #4ade80; border: 1px solid #166534; }
-        .badge-debit { background: #2d1515; color: #fca5a5; border: 1px solid #7f1d1d; }
-        .amount-credit { color: #4ade80; font-weight: 700; }
-        .amount-debit { color: #fca5a5; font-weight: 700; }
-        .pagination { display: flex; gap: 8px; margin-top: 20px; justify-content: center; }
-        .pagination a, .pagination span { padding: 6px 12px; border-radius: 8px; border: 1px solid #374151; color: #9ca3af; text-decoration: none; font-size: 13px; }
-        .pagination .active { background: #d92c55; color: #fff; border-color: #d92c55; }
-    </style>
-</head>
-<body>
-<nav class="nav">
-    <div class="nav-brand">SCpay Admin</div>
-    <a href="{{ route('admin.dashboard') }}">Dashboard</a>
-    <a href="{{ route('admin.support.index') }}">Support</a>
-    <a href="{{ route('admin.transactions') }}" class="active">Transactions</a>
-    <a href="{{ route('admin.fraud') }}">Fraudes</a>
-    <a href="{{ route('admin.logout') }}" onclick="return confirm('Se déconnecter ?')">Quitter</a>
-</nav>
-<div class="container">
-    <h1>Toutes les transactions</h1>
-    <p class="subtitle">{{ $transactions->total() }} transactions au total</p>
+@extends('admin.layout')
 
-    <form method="GET" action="{{ route('admin.transactions') }}">
-        <div class="filters">
-            <div class="filter-group">
-                <label>Type</label>
-                <select name="type">
+@section('title', 'Transactions')
+@section('page-title', 'Transactions')
+
+@section('content')
+<div class="space-y-6">
+
+    {{-- Filters --}}
+    <div class="card p-5">
+        <form method="GET" action="{{ route('admin.transactions') }}" class="flex flex-wrap gap-4 items-end">
+            <div class="flex flex-col gap-1.5">
+                <label class="text-label-md text-on-surface-variant">Type</label>
+                <select name="type" class="input">
                     <option value="">Tous</option>
                     <option value="credit" {{ request('type') === 'credit' ? 'selected' : '' }}>Crédit</option>
-                    <option value="debit" {{ request('type') === 'debit' ? 'selected' : '' }}>Débit</option>
+                    <option value="debit"  {{ request('type') === 'debit'  ? 'selected' : '' }}>Débit</option>
                 </select>
             </div>
-            <div class="filter-group">
-                <label>Date début</label>
-                <input type="date" name="date_from" value="{{ request('date_from') }}">
+            <div class="flex flex-col gap-1.5">
+                <label class="text-label-md text-on-surface-variant">Date début</label>
+                <input type="date" name="date_from" value="{{ request('date_from') }}" class="input">
             </div>
-            <div class="filter-group">
-                <label>Date fin</label>
-                <input type="date" name="date_to" value="{{ request('date_to') }}">
+            <div class="flex flex-col gap-1.5">
+                <label class="text-label-md text-on-surface-variant">Date fin</label>
+                <input type="date" name="date_to" value="{{ request('date_to') }}" class="input">
             </div>
-            <div class="filter-group">
-                <label>Montant min (MGA)</label>
-                <input type="number" name="amount_min" value="{{ request('amount_min') }}" placeholder="0" style="width:130px">
+            <div class="flex flex-col gap-1.5">
+                <label class="text-label-md text-on-surface-variant">Montant min (MGA)</label>
+                <input type="number" name="amount_min" value="{{ request('amount_min') }}" placeholder="0" class="input w-32">
             </div>
-            <div class="filter-group">
-                <label>Recherche</label>
-                <input type="text" name="search" value="{{ request('search') }}" placeholder="Référence, description..." style="width:220px">
+            <div class="flex flex-col gap-1.5">
+                <label class="text-label-md text-on-surface-variant">Recherche</label>
+                <input type="text" name="search" value="{{ request('search') }}" placeholder="Référence, description…" class="input w-56">
             </div>
-            <button type="submit" class="btn">Filtrer</button>
-            <a href="{{ route('admin.transactions') }}" class="btn btn-outline" style="padding:9px 16px;text-decoration:none">Reset</a>
-        </div>
-    </form>
-
-    <table>
-        <thead>
-            <tr>
-                <th>Date</th>
-                <th>Référence</th>
-                <th>Client</th>
-                <th>Compte</th>
-                <th>Type</th>
-                <th>Catégorie</th>
-                <th>Montant</th>
-                <th>Solde après</th>
-                <th>Description</th>
-            </tr>
-        </thead>
-        <tbody>
-            @forelse($transactions as $txn)
-            <tr>
-                <td style="white-space:nowrap;color:#6b7280">{{ $txn->created_at->format('d/m/Y H:i') }}</td>
-                <td style="font-family:monospace;font-size:11px;color:#9ca3af">{{ $txn->reference }}</td>
-                <td>{{ $txn->account?->user?->name ?? '—' }}</td>
-                <td style="font-family:monospace;font-size:11px">****{{ substr($txn->account?->account_number ?? '', -4) }}</td>
-                <td><span class="badge badge-{{ $txn->type }}">{{ $txn->type === 'credit' ? 'Crédit' : 'Débit' }}</span></td>
-                <td style="color:#6b7280;font-size:12px">{{ $txn->category }}</td>
-                <td class="amount-{{ $txn->type }}">
-                    {{ $txn->type === 'credit' ? '+' : '-' }}{{ number_format($txn->amount, 0, ',', ' ') }}
-                </td>
-                <td style="color:#6b7280">{{ number_format($txn->balance_after, 0, ',', ' ') }}</td>
-                <td style="color:#9ca3af;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ $txn->description }}</td>
-            </tr>
-            @empty
-            <tr><td colspan="9" style="text-align:center;padding:40px;color:#4b5563">Aucune transaction trouvée.</td></tr>
-            @endforelse
-        </tbody>
-    </table>
-
-    <div class="pagination">
-        {{ $transactions->withQueryString()->links('pagination::simple-bootstrap-4') }}
+            <button type="submit" class="btn-primary px-5 py-2.5 text-body-md rounded-lg">
+                <span class="material-symbols-outlined text-[16px] align-middle mr-1">filter_list</span>Filtrer
+            </button>
+            <a href="{{ route('admin.transactions') }}" class="btn-secondary px-5 py-2.5 text-body-md rounded-lg inline-flex items-center">
+                <span class="material-symbols-outlined text-[16px] align-middle mr-1">close</span>Reset
+            </a>
+        </form>
     </div>
+
+    {{-- Table --}}
+    <div class="card overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+            <h2 class="text-headline-sm text-on-surface">
+                {{ $transactions->total() }} transaction{{ $transactions->total() > 1 ? 's' : '' }}
+            </h2>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead>
+                    <tr class="bg-gray-50">
+                        <th class="px-6 py-3 text-left text-label-md text-on-surface-variant">Date</th>
+                        <th class="px-6 py-3 text-left text-label-md text-on-surface-variant">Référence</th>
+                        <th class="px-6 py-3 text-left text-label-md text-on-surface-variant">Client</th>
+                        <th class="px-6 py-3 text-left text-label-md text-on-surface-variant">Compte</th>
+                        <th class="px-6 py-3 text-left text-label-md text-on-surface-variant">Type</th>
+                        <th class="px-6 py-3 text-left text-label-md text-on-surface-variant">Catégorie</th>
+                        <th class="px-6 py-3 text-right text-label-md text-on-surface-variant">Montant</th>
+                        <th class="px-6 py-3 text-right text-label-md text-on-surface-variant">Solde après</th>
+                        <th class="px-6 py-3 text-left text-label-md text-on-surface-variant">Description</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-50">
+                    @forelse($transactions as $txn)
+                    <tr class="hover:bg-surface-container-low transition-colors">
+                        <td class="px-6 py-3 text-body-md text-on-surface-variant whitespace-nowrap">
+                            {{ $txn->created_at->format('d/m/Y H:i') }}
+                        </td>
+                        <td class="px-6 py-3 font-mono text-[11px] text-on-surface-variant">
+                            {{ $txn->reference }}
+                        </td>
+                        <td class="px-6 py-3 text-body-md font-medium text-on-surface">
+                            {{ $txn->account?->user?->name ?? '—' }}
+                        </td>
+                        <td class="px-6 py-3 font-mono text-[11px] text-on-surface-variant">
+                            ****{{ substr($txn->account?->account_number ?? '', -4) }}
+                        </td>
+                        <td class="px-6 py-3">
+                            <span class="badge badge-{{ $txn->type }}">
+                                {{ $txn->type === 'credit' ? 'Crédit' : 'Débit' }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-3 text-body-md text-on-surface-variant">{{ $txn->category }}</td>
+                        <td class="px-6 py-3 text-right tnum font-semibold {{ $txn->type === 'credit' ? 'text-tertiary' : 'text-error' }}">
+                            {{ $txn->type === 'credit' ? '+' : '-' }}{{ number_format($txn->amount, 0, ',', ' ') }}
+                        </td>
+                        <td class="px-6 py-3 text-right tnum text-body-md text-on-surface-variant">
+                            {{ number_format($txn->balance_after, 0, ',', ' ') }}
+                        </td>
+                        <td class="px-6 py-3 text-body-md text-on-surface-variant max-w-[180px] truncate">
+                            {{ $txn->description }}
+                        </td>
+                    </tr>
+                    @empty
+                    <tr>
+                        <td colspan="9" class="px-6 py-16 text-center text-on-surface-variant">
+                            <span class="material-symbols-outlined text-[40px] block mb-2">receipt_long</span>
+                            Aucune transaction trouvée.
+                        </td>
+                    </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+        @if($transactions->hasPages())
+        <div class="px-6 py-4 border-t border-gray-100">
+            {{ $transactions->withQueryString()->links() }}
+        </div>
+        @endif
+    </div>
+
 </div>
-</body>
-</html>
+@endsection

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Models\UserNotification;
 use Illuminate\Http\Request;
 
 class AdminKycController extends Controller
@@ -42,6 +43,12 @@ class AdminKycController extends Controller
             'kyc_reviewed_at' => now(),
         ]);
 
+        UserNotification::create_for(
+            $user->id,
+            'Compte vérifié',
+            'Votre identité a été vérifiée avec succès. Vous avez maintenant accès à toutes les fonctionnalités de SCpay.'
+        );
+
         return redirect()->route('admin.kyc')
             ->with('success', "KYC approuvé pour {$user->name}.");
     }
@@ -56,6 +63,12 @@ class AdminKycController extends Controller
             'kyc_reviewed_at'      => now(),
             'kyc_rejection_reason' => $request->reason,
         ]);
+
+        UserNotification::create_for(
+            $user->id,
+            'Vérification refusée',
+            "Votre dossier KYC a été refusé. Motif : {$request->reason}. Vous pouvez re-soumettre vos documents."
+        );
 
         return redirect()->route('admin.kyc')
             ->with('success', "KYC refusé pour {$user->name}.");

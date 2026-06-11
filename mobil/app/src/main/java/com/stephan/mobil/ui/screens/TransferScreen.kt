@@ -24,22 +24,34 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.stephan.mobil.ui.theme.*
+import com.stephan.mobil.ui.theme.LocalDarkMode
 import com.stephan.mobil.ui.viewmodel.BankUiState
 import com.stephan.mobil.ui.viewmodel.BankViewModel
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 
 @Composable
-fun TransferScreen(state: BankUiState, vm: BankViewModel, darkMode: Boolean = false) {
+@OptIn(ExperimentalMaterial3Api::class)
+fun TransferScreen(state: BankUiState, vm: BankViewModel) {
+    val darkMode = LocalDarkMode.current
     val accounts = state.balance.accounts
     var senderId by remember(accounts) { mutableIntStateOf(accounts.firstOrNull()?.id ?: 1) }
     var receiverId by remember(accounts) { mutableIntStateOf(accounts.drop(1).firstOrNull()?.id ?: accounts.firstOrNull()?.id ?: 2) }
     var amountText by remember { mutableStateOf("600000") }
     var noteText by remember { mutableStateOf("Virement mensuel") }
     var otpCode by remember { mutableStateOf("") }
+    val pageBg = if (darkMode) BgBase else Color.White
+    val ink = if (darkMode) TextPrimary else BgSurface
+    val muted = if (darkMode) TextSecondary else Color(0xFF737780)
+    val cardBg = if (darkMode) BgSurfaceElevated else Color.White
+    val border = if (darkMode) BgSurfaceTop else LineColor
 
-    Box(
+    PullToRefreshBox(
+        isRefreshing = state.loading,
+        onRefresh = { vm.refreshAll() },
         modifier = Modifier
             .fillMaxSize()
-            .background(BgBase)
+            .background(pageBg)
     ) {
         LazyColumn(
             modifier = Modifier
@@ -50,7 +62,7 @@ fun TransferScreen(state: BankUiState, vm: BankViewModel, darkMode: Boolean = fa
             item {
                 Text(
                     text = "Virement",
-                    color = TextPrimary,
+                    color = ink,
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(top = 24.dp)
@@ -86,7 +98,7 @@ fun TransferScreen(state: BankUiState, vm: BankViewModel, darkMode: Boolean = fa
                         Spacer(modifier = Modifier.width(10.dp))
                         Text(
                             text = "Double validation OTP requise pour tout montant ≥ 500 000 MGA ou dépassant 30% de votre solde.",
-                            color = TextSecondary,
+                            color = muted,
                             fontSize = 12.sp,
                             lineHeight = 18.sp
                         )
@@ -159,7 +171,7 @@ fun TransferScreen(state: BankUiState, vm: BankViewModel, darkMode: Boolean = fa
             item {
                 Text(
                     text = "Bénéficiaires enregistrés",
-                    color = TextPrimary,
+                    color = ink,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(top = 10.dp)
@@ -170,7 +182,7 @@ fun TransferScreen(state: BankUiState, vm: BankViewModel, darkMode: Boolean = fa
                 item {
                     Text(
                         text = "Aucun bénéficiaire enregistré. Vous pouvez en ajouter depuis l'onglet Profil.",
-                        color = LightSlate,
+                        color = muted,
                         fontSize = 13.sp,
                         modifier = Modifier.padding(bottom = 20.dp)
                     )
@@ -212,10 +224,10 @@ fun TransferScreen(state: BankUiState, vm: BankViewModel, darkMode: Boolean = fa
             ) {
                 Card(
                     shape = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.cardColors(containerColor = BgSurfaceElevated),
+                    colors = CardDefaults.cardColors(containerColor = cardBg),
                     modifier = Modifier
                         .fillMaxWidth(0.9f)
-                        .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(24.dp))
+                        .border(1.dp, border, RoundedCornerShape(24.dp))
                         .padding(2.dp)
                 ) {
                     Column(
@@ -239,14 +251,14 @@ fun TransferScreen(state: BankUiState, vm: BankViewModel, darkMode: Boolean = fa
 
                         Text(
                             text = "Validation OTP",
-                            color = TextPrimary,
+                            color = ink,
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold
                         )
 
                         Text(
                             text = "Pour sécuriser votre transfert de ${state.pendingTransfer.amount.toLong()} MGA, veuillez entrer le code à 6 chiffres envoyé.",
-                            color = LightSlate,
+                            color = muted,
                             fontSize = 13.sp,
                             modifier = Modifier.fillMaxWidth()
                         )
@@ -262,17 +274,19 @@ fun TransferScreen(state: BankUiState, vm: BankViewModel, darkMode: Boolean = fa
                         OutlinedTextField(
                             value = otpCode,
                             onValueChange = { if (it.length <= 6 && it.all(Char::isDigit)) otpCode = it },
-                            placeholder = { Text("Code à 6 chiffres", color = LightSlate) },
+                            placeholder = { Text("Code à 6 chiffres", color = muted) },
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .background(Color.White.copy(alpha = 0.02f), RoundedCornerShape(12.dp)),
+                                .background(if (darkMode) BgSurfaceHigh else LightBackground, RoundedCornerShape(12.dp)),
                             colors = OutlinedTextFieldDefaults.colors(
-                                focusedTextColor = BgSurface,
-                                unfocusedTextColor = BgSurface,
+                                focusedTextColor = ink,
+                                unfocusedTextColor = ink,
                                 focusedBorderColor = BrandPrimary,
-                                unfocusedBorderColor = Color(0xFFE0E0E0),
-                                cursorColor = BrandPrimary
+                                unfocusedBorderColor = border,
+                                cursorColor = BrandPrimary,
+                                focusedContainerColor = if (darkMode) BgSurfaceHigh else LightBackground,
+                                unfocusedContainerColor = if (darkMode) BgSurfaceHigh else LightBackground
                             ),
                             shape = RoundedCornerShape(12.dp),
                             singleLine = true
@@ -294,7 +308,7 @@ fun TransferScreen(state: BankUiState, vm: BankViewModel, darkMode: Boolean = fa
                         ) {
                             Text(
                                 text = "Confirmer le code",
-                                color = TextPrimary,
+                                color = Color.White,
                                 fontWeight = FontWeight.Bold
                             )
                         }
@@ -313,12 +327,19 @@ fun BeneficiaryItemCard(
     accountMasked: String,
     onClick: () -> Unit
 ) {
+    val darkMode = LocalDarkMode.current
+    val ink = if (darkMode) TextPrimary else BgSurface
+    val muted = if (darkMode) TextSecondary else Color(0xFF737780)
+    val cardBg = if (darkMode) BgSurfaceElevated else SoftBackground
+    val border = if (darkMode) BgSurfaceTop else LineColor
+    val iconBg = if (darkMode) Color.White.copy(alpha = 0.05f) else Color.White
+
     Card(
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = BgSurfaceElevated),
+        colors = CardDefaults.cardColors(containerColor = cardBg),
         modifier = Modifier
             .width(130.dp)
-            .border(1.dp, Color.White.copy(alpha = 0.04f), RoundedCornerShape(16.dp))
+            .border(1.dp, border, RoundedCornerShape(16.dp))
             .clickable(onClick = onClick)
     ) {
         Column(
@@ -330,7 +351,7 @@ fun BeneficiaryItemCard(
             Box(
                 modifier = Modifier
                     .size(40.dp)
-                    .background(Color.White.copy(alpha = 0.05f), shape = CircleShape),
+                    .background(iconBg, shape = CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
@@ -348,7 +369,7 @@ fun BeneficiaryItemCard(
 
             Text(
                 text = name,
-                color = TextPrimary,
+                color = ink,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1
@@ -356,7 +377,7 @@ fun BeneficiaryItemCard(
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = accountMasked,
-                color = LightSlate,
+                color = muted,
                 fontSize = 10.sp,
                 maxLines = 1
             )

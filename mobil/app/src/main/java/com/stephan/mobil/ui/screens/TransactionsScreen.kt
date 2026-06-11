@@ -19,14 +19,31 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.stephan.mobil.data.model.Transaction
 import com.stephan.mobil.ui.theme.*
+import com.stephan.mobil.ui.theme.LocalDarkMode
 import com.stephan.mobil.ui.viewmodel.BankUiState
 
 @Composable
-fun TransactionsScreen(state: BankUiState, darkMode: Boolean = false) {
+fun TransactionsScreen(state: BankUiState) {
+    val darkMode = LocalDarkMode.current
     var filterMode by remember { mutableStateOf("all") }
     var searchQuery by remember { mutableStateOf("") }
     var showChart by remember { mutableStateOf(false) }
+    var selectedTxn by remember { mutableStateOf<Transaction?>(null) }
+
+    if (selectedTxn != null) {
+        TransactionDetailSheet(txn = selectedTxn!!, onDismiss = { selectedTxn = null })
+        return
+    }
+
+    val pageBg = if (darkMode) BgBase else Color.White
+    val ink = if (darkMode) TextPrimary else BgSurface
+    val muted = if (darkMode) TextSecondary else Color(0xFF737780)
+    val fieldBg = if (darkMode) BgSurfaceElevated else LightBackground
+    val chipBg = if (darkMode) BgSurfaceElevated else LightBackground
+    val chipSelectedBg = if (darkMode) BgSurfaceHigh else Color(0xFFEDEDEF)
+    val border = if (darkMode) BgSurfaceTop else LineColor
 
     val filteredList = remember(state.transactions, filterMode, searchQuery) {
         state.transactions.filter { txn ->
@@ -46,7 +63,7 @@ fun TransactionsScreen(state: BankUiState, darkMode: Boolean = false) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(if (darkMode) Color(0xFF101114) else Color.White)
+            .background(pageBg)
             .padding(horizontal = 16.dp)
     ) {
         Row(
@@ -58,7 +75,7 @@ fun TransactionsScreen(state: BankUiState, darkMode: Boolean = false) {
         ) {
             Text(
                 text = "Historique",
-                color = if (darkMode) Color.White else Color(0xFF17181C),
+                color = ink,
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -66,7 +83,7 @@ fun TransactionsScreen(state: BankUiState, darkMode: Boolean = false) {
                 Icon(
                     imageVector = if (showChart) Icons.Default.ListAlt else Icons.Default.BarChart,
                     contentDescription = "Graphique",
-                    tint = Color(0xFFD92C55)
+                    tint = BrandPrimary
                 )
             }
         }
@@ -76,17 +93,19 @@ fun TransactionsScreen(state: BankUiState, darkMode: Boolean = false) {
         OutlinedTextField(
             value = searchQuery,
             onValueChange = { searchQuery = it },
-            placeholder = { Text("Rechercher une transaction...", color = LightSlate) },
-            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = LightSlate) },
+            placeholder = { Text("Rechercher une transaction...", color = muted) },
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = muted) },
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color(0xFFF7F8FA), RoundedCornerShape(14.dp)),
+                .background(fieldBg, RoundedCornerShape(14.dp)),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedTextColor = Color(0xFF17181C),
-                unfocusedTextColor = Color(0xFF17181C),
-                focusedBorderColor = Color(0xFFD92C55).copy(alpha = 0.8f),
-                unfocusedBorderColor = Color(0xFFE6E8EC),
-                cursorColor = Color(0xFFD92C55)
+                focusedTextColor = ink,
+                unfocusedTextColor = ink,
+                focusedBorderColor = BrandPrimary.copy(alpha = 0.8f),
+                unfocusedBorderColor = border,
+                cursorColor = BrandPrimary,
+                focusedContainerColor = fieldBg,
+                unfocusedContainerColor = fieldBg
             ),
             singleLine = true,
             shape = RoundedCornerShape(14.dp)
@@ -95,7 +114,7 @@ fun TransactionsScreen(state: BankUiState, darkMode: Boolean = false) {
 
         // Spending chart
         if (showChart) {
-            SpendingChart(transactions = state.transactions, darkMode = darkMode)
+            SpendingChart(transactions = state.transactions)
             Spacer(modifier = Modifier.height(16.dp))
         }
 
@@ -110,21 +129,22 @@ fun TransactionsScreen(state: BankUiState, darkMode: Boolean = false) {
                     modifier = Modifier
                         .weight(1f)
                         .background(
-                            if (selected) Color(0xFFEDEDEF) else Color(0xFFF7F8FA),
+                            if (selected) chipSelectedBg else chipBg,
                             shape = RoundedCornerShape(12.dp)
                         )
                         .border(
                             width = 1.dp,
-                            color = if (selected) Color(0xFFD92C55).copy(alpha = 0.6f) else Color(0xFFE6E8EC),
+                            color = if (selected) BrandPrimary.copy(alpha = 0.6f) else border,
                             shape = RoundedCornerShape(12.dp)
                         )
                         .clickable { filterMode = item.first }
-                        .padding(vertical = 10.dp),
+                        .heightIn(min = 48.dp)
+                        .padding(horizontal = 6.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = item.second,
-                        color = if (selected) Color(0xFFD92C55) else Color(0xFF17181C),
+                        color = if (selected) BrandPrimary else ink,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -143,7 +163,7 @@ fun TransactionsScreen(state: BankUiState, darkMode: Boolean = false) {
             ) {
                 Text(
                     text = "Aucune transaction correspondante.",
-                    color = LightSlate,
+                    color = muted,
                     fontSize = 14.sp
                 )
             }
@@ -153,7 +173,7 @@ fun TransactionsScreen(state: BankUiState, darkMode: Boolean = false) {
                 modifier = Modifier.weight(1f)
             ) {
                 items(filteredList) { txn ->
-                    PremiumTransactionRow(txn)
+                    PremiumTransactionRow(txn, onClick = { selectedTxn = txn })
                 }
                 item {
                     Spacer(modifier = Modifier.height(20.dp))

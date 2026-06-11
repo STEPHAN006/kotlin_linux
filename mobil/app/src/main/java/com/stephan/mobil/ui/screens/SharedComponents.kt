@@ -14,6 +14,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.stephan.mobil.ui.theme.*
+import com.stephan.mobil.ui.theme.LocalDarkMode
 
 @Composable
 fun PremiumInputField(
@@ -23,10 +24,16 @@ fun PremiumInputField(
     keyboardType: KeyboardType,
     icon: ImageVector
 ) {
+    val darkMode = LocalDarkMode.current
+    val fieldBg = if (darkMode) BgSurfaceHigh else LightBackground
+    val textColor = if (darkMode) TextPrimary else BgSurface
+    val borderColor = if (darkMode) BgSurfaceTop else LineColor
+    val labelColor = if (darkMode) TextSecondary else Color(0xFF737780)
+
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(
             text = label,
-            color = TextSecondary,
+            color = labelColor,
             fontSize = 12.sp,
             fontWeight = FontWeight.Medium
         )
@@ -43,15 +50,17 @@ fun PremiumInputField(
             },
             modifier = Modifier
                 .fillMaxWidth()
-                .background(BgSurfaceHigh, RoundedCornerShape(14.dp)),
+                .background(fieldBg, RoundedCornerShape(14.dp)),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedTextColor = TextPrimary,
-                unfocusedTextColor = TextPrimary,
+                focusedTextColor = textColor,
+                unfocusedTextColor = textColor,
                 focusedBorderColor = BrandPrimary,
-                unfocusedBorderColor = BgSurfaceTop,
+                unfocusedBorderColor = borderColor,
                 cursorColor = BrandPrimary,
                 focusedLeadingIconColor = BrandPrimary,
-                unfocusedLeadingIconColor = TextSecondary
+                unfocusedLeadingIconColor = BrandPrimary,
+                focusedContainerColor = fieldBg,
+                unfocusedContainerColor = fieldBg
             ),
             keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
             shape = RoundedCornerShape(14.dp),

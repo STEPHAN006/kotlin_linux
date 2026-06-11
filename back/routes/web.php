@@ -1,6 +1,9 @@
 <?php
 
 use App\Http\Controllers\Admin\AdminCardsController;
+use App\Http\Controllers\ShopController;
+use App\Models\User;
+use Illuminate\Http\Request;
 use App\Http\Controllers\Admin\AdminExportController;
 use App\Http\Controllers\Admin\AdminFraudController;
 use App\Http\Controllers\Admin\AdminKycController;
@@ -14,6 +17,31 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', function () {
     return redirect()->route('admin.login');
 });
+
+// Email verification (user taps the signed URL from their email browser)
+Route::get('/email/verify/{id}/{hash}', function (Request $request) {
+    $user = User::findOrFail($request->route('id'));
+
+    if (!hash_equals(sha1($user->getEmailForVerification()), (string) $request->route('hash'))) {
+        abort(403, 'Lien de vérification invalide.');
+    }
+
+    if (!$request->hasValidSignature()) {
+        abort(403, 'Ce lien de vérification a expiré.');
+    }
+
+    if (!$user->hasVerifiedEmail()) {
+        $user->markEmailAsVerified();
+    }
+
+    return view('emails.verified');
+})->middleware('signed')->name('verification.verify');
+
+// Public e-commerce demo
+Route::get('/shop',                    [ShopController::class, 'index'])->name('shop.index');
+Route::post('/shop/checkout',          [ShopController::class, 'checkout'])->name('shop.checkout');
+Route::get('/shop/waiting/{reference}',[ShopController::class, 'waiting'])->name('shop.waiting');
+Route::get('/shop/status/{reference}', [ShopController::class, 'status'])->name('shop.status');
 
 // Admin authentication
 Route::get('/admin/login', [DashboardController::class, 'showLogin'])->name('admin.login');
@@ -40,6 +68,8 @@ Route::prefix('admin')->middleware(AdminWebAuth::class)->name('admin.')->group(f
     // Cards
     Route::get('/cards', [AdminCardsController::class, 'index'])->name('cards');
     Route::patch('/cards/{card}/toggle', [AdminCardsController::class, 'toggle'])->name('cards.toggle');
+    Route::get('/cards/test', [AdminCardsController::class, 'testPayment'])->name('cards.test');
+    Route::post('/cards/test', [AdminCardsController::class, 'processTestPayment'])->name('cards.test.process');
     Route::patch('/cards/{card}/limit', [AdminCardsController::class, 'updateLimit'])->name('cards.limit');
 
     // Support

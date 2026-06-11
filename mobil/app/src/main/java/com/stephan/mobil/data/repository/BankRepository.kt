@@ -1,19 +1,27 @@
 package com.stephan.mobil.data.repository
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
 import com.stephan.mobil.data.api.ApiService
 import com.stephan.mobil.data.api.CoinGeckoClient
+import com.stephan.mobil.data.api.ForexClient
+import com.stephan.mobil.data.local.AppDatabase
+import com.stephan.mobil.data.local.entity.toEntity
 import com.stephan.mobil.data.model.*
+import com.stephan.mobil.notifications.ScpayFirebaseService
 import com.stephan.mobil.security.SecurityUtil
 import kotlinx.coroutines.delay
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
+import java.io.ByteArrayOutputStream
 
 class BankRepository(
     private val apiService: ApiService,
-    private val context: Context
+    private val context: Context,
+    private val db: AppDatabase = AppDatabase.getInstance(context)
 ) {
     var useMockData = false
 
@@ -48,10 +56,23 @@ class BankRepository(
         } else {
             val response = apiService.login(LoginRequest(email, password))
             val body = response.body()
-            require(response.isSuccessful && body != null) { "Login refuse: ${response.code()}" }
+            if (!response.isSuccessful || body == null) {
+                val errMsg = response.errorBody()?.string()
+                    ?.let { runCatching { org.json.JSONObject(it).optString("message") }.getOrNull() }
+                    ?.takeIf { it.isNotBlank() }
+                    ?: "Email ou mot de passe incorrect"
+                error(errMsg)
+            }
             SecurityUtil.saveAuthToken(context, body.data.token)
+            syncFcmToken()
             body.data.user
         }
+    }
+
+    private suspend fun syncFcmToken() {
+        val token = context.getSharedPreferences(ScpayFirebaseService.PREFS, Context.MODE_PRIVATE)
+            .getString(ScpayFirebaseService.KEY_TOKEN, null) ?: return
+        runCatching { apiService.updateFcmToken(mapOf("token" to token)) }
     }
 
     suspend fun register(name: String, email: String, phone: String, password: String): Result<User> = runCatching {
@@ -68,27 +89,44 @@ class BankRepository(
         }
     }
 
+    suspend fun getCurrentUser(): Result<User> = runCatching {
+        val response = apiService.getCurrentUser()
+        val body = response.body()
+        require(response.isSuccessful && body != null) { "Session expirée" }
+        body.data
+    }
+
     suspend fun getBalance(): Result<BalanceResponse> = runCatching {
-        if (useMockData) {
-            delay(250)
-            mockBalance
-        } else {
+        if (useMockData) { delay(250); return@runCatching mockBalance }
+        try {
             val response = apiService.getBalance()
             val body = response.body()
             require(response.isSuccessful && body != null) { "Erreur balance: ${response.code()}" }
+            db.accountDao().deleteAll()
+            db.accountDao().insertAll(body.data.accounts.map { it.toEntity() })
             body.data
+        } catch (e: Exception) {
+            val cached = db.accountDao().getAll()
+            if (cached.isNotEmpty()) {
+                val accounts = cached.map { it.toModel() }
+                val total = accounts.sumOf { it.balance }
+                BalanceResponse(accounts, total, String.format("%,.0f MGA (cache)", total), "MGA")
+            } else throw e
         }
     }
 
     suspend fun getTransactions(): Result<List<Transaction>> = runCatching {
-        if (useMockData) {
-            delay(250)
-            mockTransactions
-        } else {
+        if (useMockData) { delay(250); return@runCatching mockTransactions }
+        try {
             val response = apiService.getTransactions()
             val body = response.body()
             require(response.isSuccessful && body != null) { "Erreur transactions: ${response.code()}" }
+            db.transactionDao().deleteAll()
+            db.transactionDao().insertAll(body.data.map { it.toEntity() })
             body.data
+        } catch (e: Exception) {
+            val cached = db.transactionDao().getAll()
+            if (cached.isNotEmpty()) cached.map { it.toModel() } else throw e
         }
     }
 
@@ -132,6 +170,47 @@ class BankRepository(
         } else apiService.toggleCard(cardId).bodyOrThrow()
     }
 
+    suspend fun updateCardLimit(cardId: Int, limit: Double): Result<Card> = runCatching {
+        if (useMockData) {
+            val index = mockCards.indexOfFirst { it.id == cardId }
+            val updated = mockCards[index].copy(dailyLimit = limit)
+            mockCards[index] = updated
+            updated
+        } else apiService.updateCardLimit(cardId, mapOf("daily_limit" to limit)).bodyOrThrow()
+    }
+
+    suspend fun deleteCard(cardId: Int): Result<Unit> = runCatching {
+        if (useMockData) {
+            mockCards.removeIf { it.id == cardId }
+        } else {
+            apiService.deleteCard(cardId).bodyOrThrow()
+        }
+    }
+
+    suspend fun revealCard(cardId: Int): Result<CardDetails> = runCatching {
+        if (useMockData) CardDetails("4539 1488 0343 6467", "742", "05/29")
+        else apiService.revealCard(cardId).bodyOrThrow()
+    }
+
+    suspend fun deposit(request: DepositRequest): Result<DepositResult> = runCatching {
+        if (useMockData) {
+            delay(350)
+            DepositResult("DEP-DEMO-0001", request.amount, request.method, "pending")
+        } else apiService.createDeposit(request).bodyOrThrow()
+    }
+
+    suspend fun confirmDeposit(reference: String): Result<DepositResult> = runCatching {
+        if (useMockData) {
+            delay(500)
+            DepositResult("DEP-DEMO-0001", 50_000.0, "mvola", "completed", 150_000.0)
+        } else apiService.confirmDeposit(reference).bodyOrThrow()
+    }
+
+    suspend fun cancelDeposit(reference: String): Result<Unit> = runCatching {
+        if (useMockData) { delay(200) }
+        else apiService.cancelDeposit(reference).bodyOrThrow()
+    }
+
     suspend fun transfer(request: TransferRequest): Result<TransferData> = runCatching {
         if (useMockData) {
             delay(350)
@@ -173,14 +252,21 @@ class BankRepository(
         } else apiService.payQr(QrPayRequest(senderAccountId, payload, amount)).bodyOrThrow()
     }
 
-    suspend fun uploadAvatar(uri: Uri): Result<String?> = runCatching {
+    private fun uriToJpegPart(uri: Uri, fieldName: String): MultipartBody.Part {
         val stream = context.contentResolver.openInputStream(uri)
             ?: error("Impossible d'ouvrir l'image")
-        val bytes = stream.readBytes()
+        val bitmap = BitmapFactory.decodeStream(stream)
         stream.close()
-        val mimeType = context.contentResolver.getType(uri) ?: "image/jpeg"
-        val body = bytes.toRequestBody(mimeType.toMediaTypeOrNull())
-        val part = MultipartBody.Part.createFormData("avatar", "avatar.jpg", body)
+        require(bitmap != null) { "Image illisible ou format non supporté" }
+        val out = ByteArrayOutputStream()
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 90, out)
+        val bytes = out.toByteArray()
+        val body = bytes.toRequestBody("image/jpeg".toMediaTypeOrNull())
+        return MultipartBody.Part.createFormData(fieldName, "$fieldName.jpg", body)
+    }
+
+    suspend fun uploadAvatar(uri: Uri): Result<String?> = runCatching {
+        val part = uriToJpegPart(uri, "avatar")
         val response = apiService.uploadAvatar(part)
         require(response.isSuccessful && response.body() != null) { "Erreur upload: ${response.code()}" }
         response.body()!!.data["avatar_url"]
@@ -203,6 +289,11 @@ class BankRepository(
         else apiService.getCryptoWallets().bodyOrThrow()
     }
 
+    suspend fun getCryptoTransactions(): Result<List<CryptoTxn>> = runCatching {
+        if (useMockData) emptyList()
+        else apiService.getCryptoTransactions().bodyOrThrow()
+    }
+
     suspend fun buyCrypto(symbol: String, amountMga: Double, priceUsd: Double, mgaPerUsd: Double): Result<CryptoTradeResult> = runCatching {
         if (useMockData) CryptoTradeResult(symbol, amountMga / (priceUsd * mgaPerUsd), amountMga)
         else apiService.buyCrypto(CryptoBuyRequest(symbol, amountMga, priceUsd, mgaPerUsd)).bodyOrThrow()
@@ -218,6 +309,11 @@ class BankRepository(
         else apiService.sendCrypto(CryptoSendRequest(symbol, cryptoAmount, toAddress, priceUsd, mgaPerUsd)).bodyOrThrow()
     }
 
+    suspend fun swapCrypto(fromSymbol: String, fromAmount: Double, fromPriceUsd: Double, toSymbol: String, toPriceUsd: Double, mgaPerUsd: Double): Result<CryptoSwapResult> = runCatching {
+        if (useMockData) CryptoSwapResult(fromSymbol, toSymbol, fromAmount, fromAmount * fromPriceUsd / toPriceUsd, "0xmock_swap")
+        else apiService.swapCrypto(CryptoSwapRequest(fromSymbol, toSymbol, fromAmount, fromPriceUsd, toPriceUsd, mgaPerUsd)).bodyOrThrow()
+    }
+
     suspend fun getCoinMarkets(): Result<List<CoinMarketData>> = runCatching {
         val response = CoinGeckoClient.api.getMarkets(ids = CoinGeckoClient.COIN_IDS)
         require(response.isSuccessful && response.body() != null) { "CoinGecko error: ${response.code()}" }
@@ -230,19 +326,57 @@ class BankRepository(
         response.body()!!.prices.map { row -> row[0].toLong() to row[1] }
     }
 
+    suspend fun getExchangeRates(): Result<Map<String, Double>> = runCatching {
+        val response = ForexClient.api.getRates("USD")
+        require(response.isSuccessful && response.body() != null) { "Forex error: ${response.code()}" }
+        response.body()!!.rates
+    }
+
+    suspend fun getCoinOhlc(coinId: String, days: String): Result<List<List<Double>>> = runCatching {
+        val response = CoinGeckoClient.api.getOhlc(coinId, days = days)
+        require(response.isSuccessful && response.body() != null) { "CoinGecko OHLC error: ${response.code()}" }
+        response.body()!!
+    }
+
     // ── Notifications ────────────────────────────────────────────────────────
 
-    suspend fun getNotifications(): Result<List<AppNotification>> = runCatching {
+    suspend fun getPendingCardPayments(): Result<List<PendingCardPayment>> = runCatching {
         if (useMockData) emptyList()
-        else apiService.getNotifications().bodyOrThrow()
+        else apiService.getPendingCardPayments().bodyOrThrow()
+    }
+
+    suspend fun confirmCardPayment(reference: String): Result<Unit> = runCatching {
+        if (!useMockData) apiService.confirmCardPayment(reference).bodyOrThrow()
+    }
+
+    suspend fun declineCardPayment(reference: String): Result<Unit> = runCatching {
+        if (!useMockData) apiService.declineCardPayment(reference).bodyOrThrow()
+    }
+
+    suspend fun getNotifications(): Result<List<AppNotification>> = runCatching {
+        if (useMockData) return@runCatching emptyList()
+        try {
+            val list = apiService.getNotifications().bodyOrThrow()
+            db.notificationDao().insertAll(list.map { it.toEntity() })
+            list
+        } catch (e: Exception) {
+            val cached = db.notificationDao().getAll()
+            if (cached.isNotEmpty()) cached.map { it.toModel() } else throw e
+        }
     }
 
     suspend fun markNotificationRead(id: Int): Result<Unit> = runCatching {
-        if (!useMockData) apiService.markNotificationRead(id).bodyOrThrow()
+        if (!useMockData) {
+            apiService.markNotificationRead(id).bodyOrThrow()
+            db.notificationDao().markRead(id)
+        }
     }
 
     suspend fun markAllNotificationsRead(): Result<Unit> = runCatching {
-        if (!useMockData) apiService.markAllNotificationsRead().bodyOrThrow()
+        if (!useMockData) {
+            apiService.markAllNotificationsRead().bodyOrThrow()
+            db.notificationDao().markAllRead()
+        }
     }
 
     // ── KYC ─────────────────────────────────────────────────────────────────
@@ -257,17 +391,73 @@ class BankRepository(
             delay(800)
             return@runCatching
         }
-        fun uriToPart(uri: Uri, name: String): MultipartBody.Part {
-            val stream = context.contentResolver.openInputStream(uri) ?: error("Impossible d'ouvrir l'image")
-            val bytes = stream.readBytes()
-            stream.close()
-            val mime = context.contentResolver.getType(uri) ?: "image/jpeg"
-            val body = bytes.toRequestBody(mime.toMediaTypeOrNull())
-            return MultipartBody.Part.createFormData(name, "$name.jpg", body)
-        }
         val nameBody = cinFullName.toRequestBody("text/plain".toMediaTypeOrNull())
-        val response = apiService.submitKyc(nameBody, uriToPart(cinRectoUri, "cin_recto"), uriToPart(cinVersoUri, "cin_verso"))
+        val response = apiService.submitKyc(
+            nameBody,
+            uriToJpegPart(cinRectoUri, "cin_recto"),
+            uriToJpegPart(cinVersoUri, "cin_verso")
+        )
         require(response.isSuccessful && response.body() != null) { "Erreur soumission KYC: ${response.code()}" }
+    }
+
+    suspend fun getOrCreateSupportTicket(): Result<SupportTicketDetail> = runCatching {
+        if (useMockData) return@runCatching SupportTicketDetail(
+            id = 1, subject = "Support client", status = "open", priority = "medium", category = "general",
+            messages = listOf(
+                SupportMessage(1, "Bienvenue chez SCpay ! Décrivez votre problème.", true, "Agent SCpay")
+            )
+        )
+        apiService.getOrCreateSupportTicket().bodyOrThrow()
+    }
+
+    suspend fun sendSupportMessage(
+        ticketId: Int,
+        message: String,
+        imageUri: Uri? = null,
+        ctx: Context? = null
+    ): Result<SupportTicketDetail> = runCatching {
+        if (useMockData) {
+            delay(300)
+            return@runCatching SupportTicketDetail(ticketId, "Support client", "open", "medium", "general")
+        }
+        val msgBody = message.toRequestBody("text/plain".toMediaTypeOrNull())
+        val imagePart = if (imageUri != null) uriToJpegPart(imageUri, "image") else null
+        apiService.addSupportMessage(ticketId, msgBody, imagePart).bodyOrThrow()
+    }
+
+    suspend fun updateProfile(
+        currentPassword: String,
+        name: String? = null,
+        email: String? = null,
+        phone: String? = null
+    ): Result<User> = runCatching {
+        if (useMockData) error("Non disponible en mode mock")
+        apiService.updateProfile(mapOf(
+            "current_password" to currentPassword,
+            "name" to name,
+            "email" to email,
+            "phone" to phone
+        ).filterValues { it != null }.mapValues { it.value!! }).bodyOrThrow()
+    }
+
+    suspend fun getScheduledWithdrawals(): Result<List<ScheduledWithdrawal>> = runCatching {
+        if (useMockData) emptyList()
+        else apiService.getScheduledWithdrawals().bodyOrThrow()
+    }
+
+    suspend fun createScheduledWithdrawal(request: ScheduledWithdrawalRequest): Result<ScheduledWithdrawal> = runCatching {
+        if (useMockData) error("Non disponible en mode mock")
+        else apiService.createScheduledWithdrawal(request).bodyOrThrow()
+    }
+
+    suspend fun toggleScheduledWithdrawal(id: Int): Result<ScheduledWithdrawal> = runCatching {
+        if (useMockData) error("Non disponible en mode mock")
+        else apiService.toggleScheduledWithdrawal(id).bodyOrThrow()
+    }
+
+    suspend fun deleteScheduledWithdrawal(id: Int): Result<Unit> = runCatching {
+        if (useMockData) return@runCatching
+        apiService.deleteScheduledWithdrawal(id).bodyOrThrow()
     }
 
     fun logout() {

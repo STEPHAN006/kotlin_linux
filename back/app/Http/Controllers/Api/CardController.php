@@ -50,6 +50,44 @@ class CardController extends Controller
         ], 201);
     }
 
+    public function updateLimit(Request $request, Card $card): JsonResponse
+    {
+        abort_unless($card->account?->user_id === $request->user()->id, 403);
+
+        $validated = $request->validate([
+            'daily_limit' => ['required', 'numeric', 'min:10000', 'max:10000000'],
+        ]);
+
+        $card->update(['daily_limit' => $validated['daily_limit']]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Limite mise à jour.',
+            'data'    => new CardResource($card),
+        ]);
+    }
+
+    public function reveal(Request $request, Card $card): JsonResponse
+    {
+        abort_unless($card->account?->user_id === $request->user()->id, 403);
+
+        $this->auditService->log($request->user()->id, 'card.revealed', [
+            'card_id' => $card->id,
+        ], 'warning', $request);
+
+        $number = $card->card_number;
+        $formatted = implode(' ', str_split(str_pad($number, 16, '0', STR_PAD_LEFT), 4));
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'card_number' => $formatted,
+                'cvv'         => $card->cvv,
+                'expiry_date' => $card->expiry_date?->format('m/Y'),
+            ],
+        ]);
+    }
+
     public function toggle(Request $request, Card $card): JsonResponse
     {
         abort_unless($card->account?->user_id === $request->user()->id, 403);
@@ -64,6 +102,22 @@ class CardController extends Controller
             'success' => true,
             'message' => $card->is_blocked ? 'Carte bloquee.' : 'Carte debloquee.',
             'data' => new CardResource($card),
+        ]);
+    }
+
+    public function destroy(Request $request, Card $card): JsonResponse
+    {
+        abort_unless($card->account?->user_id === $request->user()->id, 403);
+
+        $this->auditService->log($request->user()->id, 'card.deleted', [
+            'card_id' => $card->id,
+        ], 'warning', $request);
+
+        $card->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Carte supprimee.',
         ]);
     }
 }

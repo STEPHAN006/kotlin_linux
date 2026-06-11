@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SCpay — Notifications</title>
+<link rel="stylesheet" href="scpay-design.css">
+</head>
+<body>
+<div class="phone">
+  <div class="statusbar"><span class="time">9:41</span><div class="icons"><svg viewBox="0 0 24 24"><path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/></svg></div></div>
+  <div class="screen" style="padding:0 20px;">
+    <div style="display:flex;align-items:center;padding:16px 0 20px;">
+      <button class="icon-btn" onclick="history.back()"><svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg></button>
+      <h1 class="h1" style="flex:1;margin-left:4px;">Notifications</h1>
+      <span style="font-size:13px;color:var(--magenta);font-weight:600;cursor:pointer;">Tout lire</span>
+    </div>
+
+    <!-- Unread -->
+    <div style="font-size:12px;color:var(--muted);font-weight:600;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:10px;">Nouvelles</div>
+
+    <div style="background:rgba(255,0,122,0.05);border:1px solid rgba(255,0,122,0.1);border-radius:var(--radius);padding:14px;margin-bottom:10px;display:flex;align-items:flex-start;gap:12px;cursor:pointer;">
+      <div style="width:36px;height:36px;border-radius:50%;background:var(--magenta-soft);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        <svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:var(--magenta);"><path d="M21 18v1c0 1.1-.9 2-2 2H5c-1.11 0-2-.9-2-2V5c0-1.1.89-2 2-2h14c1.1 0 2 .9 2 2v1h-9c-1.11 0-2 .9-2 2v8c0 1.1.89 2 2 2h9z"/></svg>
+      </div>
+      <div style="flex:1;">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+          <span style="font-size:14px;font-weight:700;color:var(--white);flex:1;">Virement reçu</span>
+          <div style="width:8px;height:8px;border-radius:50%;background:var(--magenta);flex-shrink:0;"></div>
+        </div>
+        <div style="font-size:13px;color:var(--muted);line-height:1.5;">Vous avez reçu <span style="color:var(--success);font-weight:600;">+150 000 MGA</span> de Rakoto Jean</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px;">Il y a 5 minutes</div>
+      </div>
+    </div>
+
+    <div style="background:rgba(255,0,122,0.05);border:1px solid rgba(255,0,122,0.1);border-radius:var(--radius);padding:14px;margin-bottom:10px;display:flex;align-items:flex-start;gap:12px;cursor:pointer;">
+      <div style="width:36px;height:36px;border-radius:50%;background:rgba(93,187,130,0.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        <svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:var(--success);"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
+      </div>
+      <div style="flex:1;">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+          <span style="font-size:14px;font-weight:700;color:var(--white);flex:1;">Connexion détectée</span>
+          <div style="width:8px;height:8px;border-radius:50%;background:var(--magenta);flex-shrink:0;"></div>
+        </div>
+        <div style="font-size:13px;color:var(--muted);line-height:1.5;">Nouvelle connexion depuis Antananarivo, Madagascar</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px;">Il y a 2 heures</div>
+      </div>
+    </div>
+
+    <!-- Lues -->
+    <div style="font-size:12px;color:var(--muted);font-weight:600;letter-spacing:0.5px;text-transform:uppercase;margin:16px 0 10px;">Lues</div>
+
+    <div style="padding:14px 0;display:flex;align-items:flex-start;gap:12px;cursor:pointer;">
+      <div style="width:36px;height:36px;border-radius:50%;background:var(--surface-high);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        <svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:var(--muted);"><path d="M20 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
+      </div>
+      <div style="flex:1;">
+        <div style="font-size:14px;font-weight:600;color:var(--muted);margin-bottom:4px;">Carte activée</div>
+        <div style="font-size:13px;color:var(--muted);line-height:1.5;">Votre carte Solana •••• 1000 est maintenant active</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px;">Hier à 14h32</div>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div style="padding:14px 0;display:flex;align-items:flex-start;gap:12px;cursor:pointer;">
+      <div style="width:36px;height:36px;border-radius:50%;background:var(--surface-high);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        <svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:var(--muted);"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
+      </div>
+      <div style="flex:1;">
+        <div style="font-size:14px;font-weight:600;color:var(--muted);margin-bottom:4px;">Virement effectué</div>
+        <div style="font-size:13px;color:var(--muted);line-height:1.5;">Votre virement de 600 000 MGA a été traité avec succès</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px;">Avant-hier à 09h15</div>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div style="padding:14px 0;display:flex;align-items:flex-start;gap:12px;cursor:pointer;">
+      <div style="width:36px;height:36px;border-radius:50%;background:var(--surface-high);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        <svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:var(--muted);"><path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/></svg>
+      </div>
+      <div style="flex:1;">
+        <div style="font-size:14px;font-weight:600;color:var(--muted);margin-bottom:4px;">Bonus de parrainage</div>
+        <div style="font-size:13px;color:var(--muted);line-height:1.5;">Vous avez gagné 5 000 MGA grâce à votre parrainage</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px;">Il y a 3 jours</div>
+      </div>
+    </div>
+    <div style="height:24px;"></div>
+  </div>
+
+  <nav class="bottom-nav">
+    <a class="nav-item" href="01-dashboard.html"><svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg><span>Accueil</span></a>
+    <a class="nav-item" href="03-history.html"><svg viewBox="0 0 24 24"><path d="M7 2v11h3v9l7-12h-4l4-8z"/></svg><span>Historique</span></a>
+    <a class="nav-item" href="02-transfer.html"><svg viewBox="0 0 24 24"><path d="M6.99 11L3 15l3.99 4v-3H14v-2H6.99v-3zM21 9l-3.99-4v3H10v2h7.01v3L21 9z"/></svg><span>Virement</span></a>
+    <a class="nav-item" href="05-cards.html"><svg viewBox="0 0 24 24"><path d="M20 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg><span>Cartes</span></a>
+    <a class="nav-item" href="06-profile.html"><svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg><span>Profil</span></a>
+  </nav>
+</div>
+</body>
+</html>

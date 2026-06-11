@@ -1,113 +1,96 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Alertes Fraude — SCpay Admin</title>
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f1117; color: #e5e7eb; min-height: 100vh; }
-        .nav { background: #1a1d27; border-bottom: 1px solid #2a2d3a; padding: 0 24px; display: flex; align-items: center; height: 60px; gap: 16px; }
-        .nav-brand { color: #d92c55; font-size: 20px; font-weight: 800; flex: 1; }
-        .nav a { color: #9ca3af; font-size: 14px; text-decoration: none; padding: 6px 14px; border-radius: 8px; border: 1px solid #374151; }
-        .nav a.active, .nav a:hover { background: #d92c55; color: #fff; border-color: #d92c55; }
-        .container { max-width: 1100px; margin: 0 auto; padding: 32px 24px; }
-        h1 { font-size: 24px; font-weight: 700; margin-bottom: 6px; }
-        .subtitle { color: #6b7280; font-size: 14px; margin-bottom: 28px; }
-        .status-bar { background: #1a1d27; border: 1px solid #2a2d3a; border-radius: 12px; padding: 16px 20px; margin-bottom: 24px; display: flex; align-items: center; gap: 16px; }
-        .status-dot { width: 10px; height: 10px; border-radius: 50%; background: #4ade80; box-shadow: 0 0 6px #4ade80; animation: pulse 2s infinite; }
-        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
-        .status-text { font-size: 14px; color: #9ca3af; }
-        .status-text strong { color: #4ade80; }
-        .alert-count { margin-left: auto; font-size: 22px; font-weight: 800; color: #d92c55; }
-        .alerts-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; }
-        .alert-card { background: #1a1d27; border-radius: 14px; padding: 20px; border-left: 4px solid; }
-        .alert-card.critical { border-color: #ef4444; }
-        .alert-card.warning { border-color: #f59e0b; }
-        .alert-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-        .alert-amount { font-size: 22px; font-weight: 800; color: #e5e7eb; }
-        .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
-        .badge-crit { background: #2d1515; color: #f87171; border: 1px solid #7f1d1d; }
-        .badge-warn { background: #451a03; color: #fbbf24; border: 1px solid #92400e; }
-        .alert-field { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px; }
-        .alert-field .key { color: #6b7280; }
-        .alert-field .val { color: #e5e7eb; font-weight: 500; text-align: right; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .empty { text-align: center; padding: 80px; color: #4b5563; }
-        .empty-icon { font-size: 48px; margin-bottom: 16px; }
-        .legend { background: #1a1d27; border: 1px solid #2a2d3a; border-radius: 12px; padding: 20px; margin-bottom: 24px; }
-        .legend h3 { font-size: 14px; font-weight: 700; margin-bottom: 12px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.05em; }
-        .legend-items { display: flex; gap: 24px; flex-wrap: wrap; }
-        .legend-item { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #6b7280; }
-        .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
-    </style>
-</head>
-<body>
-<nav class="nav">
-    <div class="nav-brand">SCpay Admin</div>
-    <a href="{{ route('admin.dashboard') }}">Dashboard</a>
-    <a href="{{ route('admin.support.index') }}">Support</a>
-    <a href="{{ route('admin.transactions') }}">Transactions</a>
-    <a href="{{ route('admin.fraud') }}" class="active">Fraudes</a>
-    <a href="{{ route('admin.logout') }}" onclick="return confirm('Se déconnecter ?')">Quitter</a>
-</nav>
-<div class="container">
-    <h1>Détection d'anomalies</h1>
-    <p class="subtitle">Surveillance temps réel — transactions suspectes automatiquement détectées</p>
+@extends('admin.layout')
 
-    <div class="status-bar">
-        <div class="status-dot"></div>
-        <div class="status-text">Système de surveillance <strong>actif</strong> · Dernière analyse : {{ now()->format('H:i:s') }}</div>
-        <div class="alert-count">{{ $alerts['alert_count'] }} alerte{{ $alerts['alert_count'] > 1 ? 's' : '' }}</div>
+@section('title', 'Alertes Fraude')
+@section('page-title', 'Détection d\'anomalies')
+
+@section('content')
+<div class="space-y-6">
+
+    {{-- Status bar --}}
+    <div class="card p-5 flex items-center gap-4">
+        <div class="relative flex h-3 w-3">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-tertiary opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-3 w-3 bg-tertiary"></span>
+        </div>
+        <p class="text-body-md text-on-surface-variant flex-1">
+            Système de surveillance <span class="font-semibold text-tertiary">actif</span>
+            · Dernière analyse : {{ now()->format('H:i:s') }}
+        </p>
+        <span class="text-display-lg {{ $alerts['alert_count'] > 0 ? 'text-error' : 'text-tertiary' }} font-bold">
+            {{ $alerts['alert_count'] }} alerte{{ $alerts['alert_count'] > 1 ? 's' : '' }}
+        </span>
     </div>
 
-    <div class="legend">
-        <h3>Règles de détection</h3>
-        <div class="legend-items">
-            <div class="legend-item"><div class="legend-dot" style="background:#ef4444"></div> Montant > 10 000 000 MGA (critique)</div>
-            <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div> Même montant répété ≥ 3 fois / 24h</div>
-            <div class="legend-item"><div class="legend-dot" style="background:#8b5cf6"></div> Transaction entre 00h00 et 05h00</div>
-            <div class="legend-item"><div class="legend-dot" style="background:#6b7280"></div> ≥ 5 débits en 10 minutes</div>
+    {{-- Legend --}}
+    <div class="card p-5">
+        <h3 class="text-label-md text-on-surface-variant uppercase tracking-wider mb-3">Règles de détection</h3>
+        <div class="flex flex-wrap gap-6">
+            <div class="flex items-center gap-2 text-body-md text-on-surface-variant">
+                <span class="w-2.5 h-2.5 rounded-full bg-error flex-shrink-0"></span>
+                Montant &gt; 10 000 000 MGA (critique)
+            </div>
+            <div class="flex items-center gap-2 text-body-md text-on-surface-variant">
+                <span class="w-2.5 h-2.5 rounded-full bg-amber-400 flex-shrink-0"></span>
+                Même montant répété ≥ 3 fois / 24h
+            </div>
+            <div class="flex items-center gap-2 text-body-md text-on-surface-variant">
+                <span class="w-2.5 h-2.5 rounded-full bg-purple-400 flex-shrink-0"></span>
+                Transaction entre 00h00 et 05h00
+            </div>
+            <div class="flex items-center gap-2 text-body-md text-on-surface-variant">
+                <span class="w-2.5 h-2.5 rounded-full bg-gray-400 flex-shrink-0"></span>
+                ≥ 5 débits en 10 minutes
+            </div>
         </div>
     </div>
 
+    {{-- Alerts --}}
     @if(empty($alerts['alerts']))
-    <div class="empty">
-        <div class="empty-icon">✅</div>
-        <p style="font-size:18px;font-weight:600;color:#e5e7eb;margin-bottom:8px">Aucune anomalie détectée</p>
-        <p>Toutes les transactions semblent normales.</p>
+    <div class="card py-20 text-center">
+        <span class="material-symbols-outlined text-[56px] text-tertiary">verified_user</span>
+        <p class="text-headline-sm text-on-surface mt-4">Aucune anomalie détectée</p>
+        <p class="text-body-md text-on-surface-variant mt-2">Toutes les transactions semblent normales.</p>
     </div>
     @else
-    <div class="alerts-grid">
+    <div class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
         @foreach($alerts['alerts'] as $alert)
-        <div class="alert-card {{ $alert['severity'] }}">
-            <div class="alert-header">
-                <div class="alert-amount">{{ number_format($alert['amount'], 0, ',', ' ') }} MGA</div>
-                <span class="badge badge-{{ $alert['severity'] === 'critical' ? 'crit' : 'warn' }}">{{ $alert['severity'] }}</span>
-            </div>
-            <div class="alert-field">
-                <span class="key">Client</span>
-                <span class="val">{{ $alert['account_holder'] }}</span>
-            </div>
-            <div class="alert-field">
-                <span class="key">Type</span>
-                <span class="val">{{ str_replace('_', ' ', $alert['type']) }}</span>
-            </div>
-            <div class="alert-field">
-                <span class="key">Référence</span>
-                <span class="val" style="font-family:monospace;font-size:11px">{{ $alert['transaction_reference'] }}</span>
-            </div>
-            <div class="alert-field">
-                <span class="key">Description</span>
-                <span class="val">{{ $alert['description'] }}</span>
-            </div>
-            <div class="alert-field">
-                <span class="key">Heure</span>
-                <span class="val">{{ \Carbon\Carbon::parse($alert['timestamp'])->format('d/m/Y H:i') }}</span>
+        <div class="card overflow-hidden border-l-4 {{ $alert['severity'] === 'critical' ? 'border-l-error' : 'border-l-amber-400' }}">
+            <div class="p-5">
+                <div class="flex items-start justify-between mb-4">
+                    <p class="text-headline-md text-on-surface font-bold tnum">
+                        {{ number_format($alert['amount'], 0, ',', ' ') }} MGA
+                    </p>
+                    <span class="badge {{ $alert['severity'] === 'critical' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700' }}">
+                        {{ strtoupper($alert['severity']) }}
+                    </span>
+                </div>
+                <dl class="space-y-2">
+                    <div class="flex justify-between text-body-md">
+                        <dt class="text-on-surface-variant">Client</dt>
+                        <dd class="font-medium text-on-surface truncate max-w-[180px]">{{ $alert['account_holder'] }}</dd>
+                    </div>
+                    <div class="flex justify-between text-body-md">
+                        <dt class="text-on-surface-variant">Type</dt>
+                        <dd class="text-on-surface">{{ str_replace('_', ' ', $alert['type']) }}</dd>
+                    </div>
+                    <div class="flex justify-between text-body-md">
+                        <dt class="text-on-surface-variant">Référence</dt>
+                        <dd class="font-mono text-[11px] text-on-surface-variant">{{ $alert['transaction_reference'] }}</dd>
+                    </div>
+                    <div class="flex justify-between text-body-md">
+                        <dt class="text-on-surface-variant">Description</dt>
+                        <dd class="text-on-surface truncate max-w-[180px]">{{ $alert['description'] }}</dd>
+                    </div>
+                    <div class="flex justify-between text-body-md">
+                        <dt class="text-on-surface-variant">Heure</dt>
+                        <dd class="text-on-surface">{{ \Carbon\Carbon::parse($alert['timestamp'])->format('d/m/Y H:i') }}</dd>
+                    </div>
+                </dl>
             </div>
         </div>
         @endforeach
     </div>
     @endif
+
 </div>
-</body>
-</html>
+@endsection

@@ -11,19 +11,31 @@ class NotificationController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $notifications = UserNotification::where('user_id', $request->user()->id)
+        $perPage   = min((int) $request->query('per_page', 20), 50);
+        $paginated = UserNotification::where('user_id', $request->user()->id)
             ->orderByDesc('created_at')
-            ->limit(30)
-            ->get()
-            ->map(fn($n) => [
-                'id'         => $n->id,
-                'title'      => $n->title,
-                'body'       => $n->body,
-                'read'       => $n->read_at !== null,
-                'created_at' => $n->created_at->format('Y-m-d H:i'),
-            ]);
+            ->paginate($perPage);
 
-        return response()->json(['success' => true, 'data' => $notifications]);
+        $data = $paginated->getCollection()->map(fn($n) => [
+            'id'         => $n->id,
+            'title'      => $n->title,
+            'body'       => $n->body,
+            'read'       => $n->read_at !== null,
+            'created_at' => $n->created_at->format('Y-m-d H:i'),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'data'    => $data,
+            'meta'    => [
+                'total'        => $paginated->total(),
+                'per_page'     => $paginated->perPage(),
+                'current_page' => $paginated->currentPage(),
+                'last_page'    => $paginated->lastPage(),
+                'unread_count' => UserNotification::where('user_id', $request->user()->id)
+                                    ->whereNull('read_at')->count(),
+            ],
+        ]);
     }
 
     public function markRead(Request $request, int $id): JsonResponse

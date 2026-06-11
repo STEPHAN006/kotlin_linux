@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SCpay — Accueil</title>
+<link rel="stylesheet" href="scpay-design.css">
+<style>
+.balance-card {
+  background: linear-gradient(135deg, #1a1c1e 0%, #1e2022 100%);
+  border: 1px solid rgba(255,0,122,0.15);
+  border-radius: 20px;
+  padding: 22px;
+  position: relative;
+  overflow: hidden;
+}
+.balance-card::before {
+  content: '';
+  position: absolute;
+  top: -60px; right: -60px;
+  width: 180px; height: 180px;
+  background: radial-gradient(circle, rgba(255,0,122,0.12), transparent 70%);
+  border-radius: 50%;
+}
+.action-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+.action-circle {
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--surface-high);
+  transition: transform 0.15s;
+}
+.action-circle:hover { transform: scale(1.05); }
+.action-circle.primary { background: var(--magenta); box-shadow: 0 6px 20px var(--magenta-glow); }
+.action-circle svg { width: 24px; height: 24px; fill: #fff; }
+.action-btn span { font-size: 12px; color: var(--muted); font-weight: 500; }
+
+.referral-banner {
+  background: linear-gradient(135deg, #0d2d3a, #1a3a4a);
+  border: 1px solid rgba(93,187,130,0.2);
+  border-radius: var(--radius-md);
+  padding: 18px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  cursor: pointer;
+}
+.referral-dollar {
+  width: 58px; height: 58px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.1);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 26px; font-weight: 700;
+  color: var(--magenta);
+  flex-shrink: 0;
+}
+.credit-card-section {
+  background: var(--surface-mid);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: var(--radius-md);
+  padding: 20px;
+}
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="statusbar">
+    <span class="time">9:41</span>
+    <div class="icons">
+      <svg viewBox="0 0 24 24"><path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/></svg>
+      <svg viewBox="0 0 24 24"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z"/></svg>
+    </div>
+  </div>
+
+  <div class="screen" style="padding: 0 16px;">
+    <!-- Header -->
+    <div style="display:flex; align-items:center; gap:10px; padding: 12px 0 20px;">
+      <div class="avatar">SC</div>
+      <span style="flex:1; font-family:'Hanken Grotesk',sans-serif; font-size:22px; font-weight:800; color:#fff;">SCpay</span>
+      <button class="icon-btn">
+        <svg viewBox="0 0 24 24"><path d="M9.5 6.5v3h-3v-3h3M11 5H5v6h6V5zm-1.5 9.5v3h-3v-3h3M11 13H5v6h6v-6zm6.5-6.5v3h-3v-3h3M19 5h-6v6h6V5zm-6 8h1.5v1.5H13V13zm1.5 1.5H16V16h-1.5v-1.5zM16 13h1.5v1.5H16V13zm-3 3h1.5v1.5H13V16zm1.5 1.5H16V19h-1.5v-1.5zM16 16h1.5v1.5H16V16zm1.5-1.5H19V16h-1.5v-1.5zm0 3H19V19h-1.5v-1.5z"/></svg>
+      </button>
+      <button class="icon-btn" style="position:relative;">
+        <svg viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>
+        <span style="position:absolute; top:4px; right:4px; width:8px; height:8px; background:var(--magenta); border-radius:50%; border:1px solid var(--bg);"></span>
+      </button>
+      <button class="icon-btn">
+        <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
+      </button>
+    </div>
+
+    <!-- Balance -->
+    <div class="balance-card" style="margin-bottom:20px;">
+      <div style="display:flex; align-items:center; gap:6px; margin-bottom:10px;">
+        <span style="font-size:13px; color:var(--muted);">Valeur Totale Estimée</span>
+        <svg viewBox="0 0 24 24" style="width:16px;height:16px;fill:var(--muted);"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
+        <svg viewBox="0 0 24 24" style="width:16px;height:16px;fill:var(--muted);margin-left:6px;"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+      </div>
+      <div style="display:flex; align-items:baseline; gap:10px;">
+        <span class="amount" style="font-size:42px;">1 250 000</span>
+        <span style="font-size:18px; font-weight:600; color:var(--white);">MGA</span>
+      </div>
+      <div style="display:flex; gap:16px; margin-top:14px;">
+        <div>
+          <div class="label">Solde disponible</div>
+          <div style="font-size:14px; color:var(--success); font-weight:600;">+85 000 MGA ce mois</div>
+        </div>
+        <div style="width:1px; background:rgba(255,255,255,0.08);"></div>
+        <div>
+          <div class="label">Compte</div>
+          <div style="font-size:13px; color:var(--white); font-weight:500;">•••• 4892</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div style="display:flex; justify-content:space-between; margin-bottom:20px;">
+      <div class="action-btn">
+        <div class="action-circle primary">
+          <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+        </div>
+        <span>Dépôt</span>
+      </div>
+      <div class="action-btn">
+        <div class="action-circle">
+          <svg viewBox="0 0 24 24" style="fill:#fff;"><path d="M7 2v11h3v9l7-12h-4l4-8z"/></svg>
+        </div>
+        <span>Historique</span>
+      </div>
+      <div class="action-btn">
+        <div class="action-circle">
+          <svg viewBox="0 0 24 24" style="fill:#fff;"><path d="M6.99 11L3 15l3.99 4v-3H14v-2H6.99v-3zM21 9l-3.99-4v3H10v2h7.01v3L21 9z"/></svg>
+        </div>
+        <span>Convertir</span>
+      </div>
+      <div class="action-btn">
+        <div class="action-circle">
+          <svg viewBox="0 0 24 24" style="fill:#fff;"><path d="M6 10c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm12 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-6 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
+        </div>
+        <span>Plus</span>
+      </div>
+    </div>
+
+    <!-- Referral Banner -->
+    <div class="referral-banner" style="margin-bottom:20px;">
+      <div style="flex:1;">
+        <div class="label" style="margin-bottom:4px;">Inviter des amis</div>
+        <div style="font-family:'Hanken Grotesk',sans-serif; font-size:15px; font-weight:700; color:#fff;">Gagnez jusqu'à 40% de commissions</div>
+      </div>
+      <div class="referral-dollar">$</div>
+    </div>
+
+    <!-- Credit Section -->
+    <div class="credit-card-section" style="margin-bottom:20px;">
+      <div style="display:flex; align-items:center; margin-bottom:16px;">
+        <span style="flex:1; font-family:'Hanken Grotesk',sans-serif; font-size:16px; font-weight:700; color:#fff;">Crédit</span>
+        <svg viewBox="0 0 24 24" style="width:20px;height:20px;fill:var(--muted);"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg>
+      </div>
+      <div style="text-align:center; margin-bottom:16px;">
+        <div class="label">Limite jusqu'à (MGA)</div>
+        <div class="amount" style="font-size:26px; letter-spacing:4px; margin-top:4px;">••••</div>
+      </div>
+      <button class="btn-secondary" style="height:46px;">
+        <svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:var(--white);"><path d="M20 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg>
+        Obtenez votre limite
+      </button>
+    </div>
+
+    <!-- Transactions -->
+    <div style="display:flex; align-items:center; margin-bottom:14px;">
+      <span class="h3" style="flex:1;">Transactions</span>
+      <span class="magenta" style="font-size:13px; font-weight:600; cursor:pointer;">Voir tout</span>
+    </div>
+
+    <div class="txn-row">
+      <div class="txn-icon" style="background:rgba(209,44,85,0.12);">
+        <svg viewBox="0 0 24 24" style="fill:var(--danger);"><path d="M20 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2z"/></svg>
+      </div>
+      <div class="txn-info">
+        <div class="title">CLAUDE.AI SUBSCRIPTION</div>
+        <div class="sub">2026-04-15</div>
+      </div>
+      <div class="txn-amount">
+        <div class="val danger">-20,00 USD</div>
+        <div class="status danger">Refusé</div>
+      </div>
+    </div>
+    <div class="divider"></div>
+
+    <div class="txn-row">
+      <div class="txn-icon">
+        <svg viewBox="0 0 24 24"><path d="M20 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2z"/></svg>
+      </div>
+      <div class="txn-info">
+        <div class="title">Achat par carte</div>
+        <div class="sub">•• 1000</div>
+      </div>
+      <div class="txn-amount">
+        <div class="val">-10,00 USD</div>
+        <div class="status success">Succès</div>
+      </div>
+    </div>
+    <div class="divider"></div>
+
+    <div class="txn-row">
+      <div class="txn-icon" style="background:rgba(93,187,130,0.12);">
+        <svg viewBox="0 0 24 24" style="fill:var(--success);"><path d="M21 18v1c0 1.1-.9 2-2 2H5c-1.11 0-2-.9-2-2V5c0-1.1.89-2 2-2h14c1.1 0 2 .9 2 2v1h-9c-1.11 0-2 .9-2 2v8c0 1.1.89 2 2 2h9z"/></svg>
+      </div>
+      <div class="txn-info">
+        <div class="title">Déposez des pièces</div>
+        <div class="sub">Wallet SCpay</div>
+      </div>
+      <div class="txn-amount">
+        <div class="val success">+50,00 USDT</div>
+        <div class="status success">Succès</div>
+      </div>
+    </div>
+    <div class="divider"></div>
+
+    <div class="txn-row">
+      <div class="txn-icon" style="background:rgba(91,141,239,0.12);">
+        <svg viewBox="0 0 24 24" style="fill:var(--blue);"><path d="M2 12l10 10 10-10-10-10z"/></svg>
+      </div>
+      <div class="txn-info">
+        <div class="title">Virement reçu</div>
+        <div class="sub">2026-04-12 · Transfer</div>
+      </div>
+      <div class="txn-amount">
+        <div class="val success">+150 000 MGA</div>
+        <div class="status success">Crédit</div>
+      </div>
+    </div>
+
+    <div style="height:24px;"></div>
+  </div>
+
+  <!-- Bottom Nav -->
+  <nav class="bottom-nav">
+    <a class="nav-item active" href="01-dashboard.html">
+      <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+      <span>Accueil</span>
+    </a>
+    <a class="nav-item" href="03-history.html">
+      <svg viewBox="0 0 24 24"><path d="M7 2v11h3v9l7-12h-4l4-8z"/></svg>
+      <span>Historique</span>
+    </a>
+    <a class="nav-item" href="02-transfer.html">
+      <svg viewBox="0 0 24 24"><path d="M6.99 11L3 15l3.99 4v-3H14v-2H6.99v-3zM21 9l-3.99-4v3H10v2h7.01v3L21 9z"/></svg>
+      <span>Virement</span>
+    </a>
+    <a class="nav-item" href="05-cards.html">
+      <svg viewBox="0 0 24 24"><path d="M20 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg>
+      <span>Cartes</span>
+    </a>
+    <a class="nav-item" href="06-profile.html">
+      <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+      <span>Profil</span>
+    </a>
+  </nav>
+</div>
+</body>
+</html>
