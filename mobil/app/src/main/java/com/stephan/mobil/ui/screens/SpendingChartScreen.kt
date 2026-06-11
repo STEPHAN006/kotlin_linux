@@ -50,7 +50,7 @@ fun SpendingChart(transactions: List<Transaction>) {
     val darkMode = LocalDarkMode.current
     val ink   = if (darkMode) Color.White else Color(0xFF17181C)
     val bg    = if (darkMode) Color(0xFF1E1F24) else Color.White
-    val muted = Color(0xFF8B8F98)
+    val muted = TextSecondary
 
     val debits = transactions.filter { !it.isCredit && it.amount > 0 }
 

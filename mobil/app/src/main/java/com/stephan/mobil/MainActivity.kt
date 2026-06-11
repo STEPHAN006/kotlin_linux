@@ -13,7 +13,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.AccountBalance
+import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.CreditCard
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -295,10 +297,10 @@ private fun MainShell(
 }
 
 private fun Screen.icon() = when (this) {
-    Screen.Dashboard    -> Icons.Default.AccountBalance
-    Screen.Transactions -> Icons.AutoMirrored.Filled.ReceiptLong
+    Screen.Dashboard    -> Icons.Default.Home
+    Screen.Transactions -> Icons.Default.CreditCard
     Screen.Transfer     -> Icons.AutoMirrored.Filled.Send
-    Screen.Cards        -> Icons.Default.CreditCard
+    Screen.Cards        -> Icons.Default.BarChart
     Screen.Profile      -> Icons.Default.Person
 }
 

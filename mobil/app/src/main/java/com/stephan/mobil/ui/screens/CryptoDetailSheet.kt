@@ -323,8 +323,8 @@ fun CryptoDetailSheet(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 ActionButton("Acheter",  Icons.Default.ShoppingCart, DetailCard, Color(0xFFE11D48), Modifier.weight(1f)) { activeAction = "buy" }
-                ActionButton("Vendre",   Icons.Default.Sell,         DetailCard, Color(0xFF059669), Modifier.weight(1f)) { activeAction = "sell" }
-                ActionButton("Swap",     Icons.Default.SwapHoriz,    DetailCard, Color(0xFFD97706), Modifier.weight(1f)) { activeAction = "swap" }
+                ActionButton("Vendre",   Icons.Default.Sell,         DetailCard, SemanticDanger, Modifier.weight(1f)) { activeAction = "sell" }
+                ActionButton("Swap",     Icons.Default.SwapHoriz,    DetailCard, BrandPrimary, Modifier.weight(1f)) { activeAction = "swap" }
                 ActionButton("Envoyer",  Icons.Default.Send,         DetailCard, Color(0xFF2563EB), Modifier.weight(1f)) { activeAction = "send" }
                 ActionButton("Recevoir", Icons.Default.QrCode,       DetailCard, BrandPrimary,      Modifier.weight(1f)) { activeAction = "receive" }
             }
@@ -695,7 +695,7 @@ private fun SwapModal(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedTextColor = ink, unfocusedTextColor = ink,
-                        focusedBorderColor = Color(0xFFD97706), unfocusedBorderColor = Color.Transparent,
+                        focusedBorderColor = BrandPrimary, unfocusedBorderColor = Color.Transparent,
                         focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent
                     ),
                     singleLine = true,
@@ -709,14 +709,14 @@ private fun SwapModal(
                 Text("Disponible: ${formatCryptoQty(fromBal)} $fromSymbol",
                     color = DetailMuted, fontSize = 12.sp, modifier = Modifier.padding(start = 4.dp))
                 TextButton(onClick = { fromAmount = formatCryptoQty(fromBal) }) {
-                    Text("Max", color = Color(0xFFD97706), fontSize = 12.sp)
+                    Text("Max", color = BrandPrimary, fontSize = 12.sp)
                 }
             }
 
             // Swap arrow
             Box(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
                 Box(
-                    modifier = Modifier.size(36.dp).clip(CircleShape).background(Color(0xFFD97706)),
+                    modifier = Modifier.size(36.dp).clip(CircleShape).background(BrandPrimary),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(Icons.Default.SwapVert, null, tint = Color.White, modifier = Modifier.size(20.dp))
@@ -778,7 +778,7 @@ private fun SwapModal(
                     }
                 },
                 enabled = fromAmt > 0 && fromAmt <= fromBal && toSymbol.isNotEmpty(),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD97706)),
+                colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
                 modifier = Modifier.fillMaxWidth().height(50.dp)
             ) {
                 Text("Confirmer le swap", color = Color.White, fontWeight = FontWeight.Bold)
@@ -1030,12 +1030,12 @@ private fun SendModal(coin: CoinMarketData, wallet: CryptoWallet?, cryptoState: 
                 label = { Text("Adresse de destination", color = DetailMuted) },
                 trailingIcon = {
                     IconButton(onClick = { showQrScanner = true }) {
-                        Icon(Icons.Default.QrCodeScanner, contentDescription = "Scanner QR", tint = Color(0xFF2775CA))
+                        Icon(Icons.Default.QrCodeScanner, contentDescription = "Scanner QR", tint = BrandPrimary)
                     }
                 },
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedTextColor = ink, unfocusedTextColor = ink,
-                    focusedBorderColor = Color(0xFF2775CA), unfocusedBorderColor = line
+                    focusedBorderColor = BrandPrimary, unfocusedBorderColor = line
                 ),
                 modifier = Modifier.fillMaxWidth()
             )
@@ -1050,7 +1050,7 @@ private fun SendModal(coin: CoinMarketData, wallet: CryptoWallet?, cryptoState: 
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedTextColor = ink, unfocusedTextColor = ink,
-                    focusedBorderColor = Color(0xFF2775CA), unfocusedBorderColor = line
+                    focusedBorderColor = BrandPrimary, unfocusedBorderColor = line
                 ),
                 modifier = Modifier.fillMaxWidth()
             )
@@ -1078,7 +1078,7 @@ private fun SendModal(coin: CoinMarketData, wallet: CryptoWallet?, cryptoState: 
                 enabled = (amountCrypto.toDoubleOrNull() ?: 0.0) > 0
                         && (amountCrypto.toDoubleOrNull() ?: 0.0) <= balance
                         && toAddress.isNotBlank(),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2775CA)),
+                colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
                 modifier = Modifier.fillMaxWidth().height(50.dp)
             ) {
                 Text("Confirmer l'envoi", color = Color.White, fontWeight = FontWeight.Bold)

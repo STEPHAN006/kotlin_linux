@@ -93,14 +93,14 @@ fun PinScreen(
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
                     text = if (setupMode) "Définir votre code PIN" else "Saisir votre code PIN",
-                    color = Color.White,
+                    color = TextPrimary,
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = if (setupMode) "Créez un code à 4 chiffres pour sécuriser l'accès" else "Entrez votre code secret SCpay",
-                    color = Color.Gray,
+                    color = TextSecondary,
                     fontSize = 14.sp
                 )
             }
@@ -121,7 +121,7 @@ fun PinScreen(
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
                         text = "Veuillez réessayer dans ${cooldownSeconds}s",
-                        color = Color.Gray,
+                        color = TextSecondary,
                         fontSize = 14.sp
                     )
                 } else {
@@ -135,10 +135,10 @@ fun PinScreen(
                                 modifier = Modifier
                                     .size(16.dp)
                                     .clip(CircleShape)
-                                    .background(if (isFilled) BrandPrimary else Color.DarkGray.copy(alpha = 0.5f))
+                                    .background(if (isFilled) BrandPrimary else BgSurfaceTop)
                                     .border(
                                         width = 1.dp,
-                                        color = if (isFilled) BrandPrimary else Color.Gray.copy(alpha = 0.3f),
+                                        color = if (isFilled) BrandPrimary else BgSurfaceTop.copy(alpha = 0.5f),
                                         shape = CircleShape
                                     )
                             )
@@ -228,14 +228,14 @@ fun CustomNumericKeypad(
                                 Icon(
                                     imageVector = Icons.Default.Backspace,
                                     contentDescription = "Supprimer",
-                                    tint = Color.White,
+                                    tint = TextPrimary,
                                     modifier = Modifier.size(24.dp)
                                 )
                             }
                             else -> {
                                 Text(
                                     text = key,
-                                    color = Color.White,
+                                    color = TextPrimary,
                                     fontSize = 26.sp,
                                     fontWeight = FontWeight.Medium
                                 )
