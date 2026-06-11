@@ -1,6 +1,7 @@
 package com.stephan.mobil.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -19,12 +20,16 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import com.stephan.mobil.data.model.Card
+import com.stephan.mobil.data.model.CardDetails
 import com.stephan.mobil.data.model.Transaction
+import com.stephan.mobil.ui.theme.*
 import com.stephan.mobil.ui.viewmodel.BankUiState
 import com.stephan.mobil.ui.viewmodel.BankViewModel
 
@@ -34,23 +39,50 @@ private val CardMuted = Color(0xFF8B8F98)
 private val CardLine = Color(0xFFF0F1F3)
 private val CardSoft = Color(0xFFF4F5F7)
 
-// Card gradients matching the image (dark → purple → teal)
 private val cardGradients = listOf(
-    listOf(Color(0xFF0D0D0D), Color(0xFF3B1F6E), Color(0xFF00BFA5)),
-    listOf(Color(0xFF0D0D0D), Color(0xFF1A237E), Color(0xFF00897B)),
-    listOf(Color(0xFF1A0533), Color(0xFF6A1B9A), Color(0xFF00ACC1)),
-    listOf(Color(0xFF0D1B2A), Color(0xFF1565C0), Color(0xFF00BCD4)),
+    listOf(Color(0xFF0D0D0D), Color(0xFF1C1C1C), Color(0xFF2A2A2A)),
+    listOf(Color(0xFF080808), Color(0xFF141414), Color(0xFF1F1F1F)),
+    listOf(Color(0xFF0A0A0A), Color(0xFF161616), Color(0xFF222222)),
+    listOf(Color(0xFF0F0F0F), Color(0xFF1A1A1A), Color(0xFF252525)),
 )
 
 @Composable
 fun CardsScreenPremium(
     state: BankUiState,
-    vm: BankViewModel,
-    darkMode: Boolean = false
+    vm: BankViewModel
 ) {
+    val darkMode = LocalDarkMode.current
     val cards = state.cards
     var selectedIndex by remember { mutableStateOf(0) }
     val listState = rememberLazyListState()
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
+    state.revealedCard?.let { details ->
+        CardDetailsDialog(details = details, onDismiss = { vm.clearRevealedCard() })
+    }
+
+    if (showDeleteDialog && cards.isNotEmpty()) {
+        val cardToDelete = cards.getOrNull(selectedIndex) ?: cards.first()
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Supprimer la carte") },
+            text = { Text("Voulez-vous vraiment supprimer la carte •• ${cardToDelete.lastFour} ? Cette action est irréversible.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDeleteDialog = false
+                    vm.deleteCard(cardToDelete.id)
+                    if (selectedIndex > 0) selectedIndex--
+                }) {
+                    Text("Supprimer", color = SemanticDanger)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Annuler")
+                }
+            }
+        )
+    }
 
     val bg = if (darkMode) Color(0xFF101114) else Color.White
     val ink = if (darkMode) Color.White else CardInk
@@ -86,8 +118,7 @@ fun CardsScreenPremium(
         item {
             if (cards.isEmpty()) {
                 EmptyCardPlaceholder(
-                    onAdd = { state.balance.accounts.firstOrNull()?.let { vm.createCard(it.id, 5_000_000.0) } },
-                    darkMode = darkMode
+                    onAdd = { state.balance.accounts.firstOrNull()?.let { vm.createCard(it.id, 5_000_000.0) } }
                 )
             } else {
                 val card = cards.getOrNull(selectedIndex) ?: cards.first()
@@ -114,8 +145,8 @@ fun CardsScreenPremium(
                                         .size(if (i == selectedIndex) 20.dp else 7.dp, 7.dp)
                                         .clip(RoundedCornerShape(4.dp))
                                         .background(
-                                            if (i == selectedIndex) CardInk
-                                            else CardLine
+                                            if (i == selectedIndex) ink
+                                            else (if (darkMode) Color(0xFF2A2D3A) else CardLine)
                                         )
                                         .clickable { selectedIndex = i }
                                 )
@@ -136,14 +167,14 @@ fun CardsScreenPremium(
                         .padding(horizontal = 20.dp, vertical = 24.dp),
                     horizontalArrangement = Arrangement.SpaceAround
                 ) {
-                    CardAction(Icons.Default.RemoveRedEye, "Voir", ink) {}
+                    CardAction(Icons.Default.RemoveRedEye, "Voir", ink) { vm.revealCard(card.id) }
                     CardAction(
                         if (card.isBlocked) Icons.Default.PlayArrow else Icons.Default.AcUnit,
                         if (card.isBlocked) "Débloquer" else "Bloquer",
                         if (card.isBlocked) Color(0xFF16A34A) else Color(0xFF3B82F6)
                     ) { vm.toggleCard(card.id) }
                     CardAction(Icons.Default.Tune, "Limite", ink) {}
-                    CardAction(Icons.Default.Settings, "Paramètre", ink) {}
+                    CardAction(Icons.Default.DeleteOutline, "Supprimer", SemanticDanger) { showDeleteDialog = true }
                 }
             }
 
@@ -360,7 +391,8 @@ private fun PremiumCardVisual(card: Card, gradient: List<Color>, isBlocked: Bool
 }
 
 @Composable
-private fun EmptyCardPlaceholder(onAdd: () -> Unit, darkMode: Boolean) {
+private fun EmptyCardPlaceholder(onAdd: () -> Unit) {
+    val darkMode = LocalDarkMode.current
     val ink = if (darkMode) Color.White else CardInk
     Box(
         modifier = Modifier
@@ -383,6 +415,9 @@ private fun EmptyCardPlaceholder(onAdd: () -> Unit, darkMode: Boolean) {
 
 @Composable
 private fun CardAction(icon: ImageVector, label: String, tint: Color, onClick: () -> Unit) {
+    val darkMode = LocalDarkMode.current
+    val actionBg = if (darkMode) Color(0xFF1E212B) else CardSoft
+    val textInk = if (darkMode) Color.White else CardInk
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.clickable(onClick = onClick)
@@ -391,19 +426,22 @@ private fun CardAction(icon: ImageVector, label: String, tint: Color, onClick: (
             modifier = Modifier
                 .size(56.dp)
                 .clip(CircleShape)
-                .background(CardSoft),
+                .background(actionBg),
             contentAlignment = Alignment.Center
         ) {
             Icon(icon, null, tint = tint, modifier = Modifier.size(24.dp))
         }
         Spacer(Modifier.height(8.dp))
-        Text(label, color = CardInk, fontSize = 12.sp, textAlign = TextAlign.Center)
+        Text(label, color = textInk, fontSize = 12.sp, textAlign = TextAlign.Center)
     }
 }
 
 @Composable
 private fun CardTransactionRow(title: String, subtitle: String, amount: String, status: String, ink: Color) {
+    val darkMode = LocalDarkMode.current
     val isCredit = amount.startsWith("+")
+    val iconBg = if (darkMode) Color(0xFF1E212B) else CardSoft
+    val dividerColor = if (darkMode) Color(0xFF2A2D3A) else CardLine
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -415,7 +453,7 @@ private fun CardTransactionRow(title: String, subtitle: String, amount: String, 
             modifier = Modifier
                 .size(42.dp)
                 .clip(RoundedCornerShape(12.dp))
-                .background(CardSoft),
+                .background(iconBg),
             contentAlignment = Alignment.Center
         ) {
             Icon(Icons.Default.GridView, null, tint = CardMuted, modifier = Modifier.size(20.dp))
@@ -431,7 +469,98 @@ private fun CardTransactionRow(title: String, subtitle: String, amount: String, 
             Text(status, color = CardMuted, fontSize = 12.sp)
         }
     }
-    Divider(modifier = Modifier.padding(horizontal = 20.dp), color = CardLine, thickness = 0.5.dp)
+    Divider(modifier = Modifier.padding(horizontal = 20.dp), color = dividerColor, thickness = 0.5.dp)
+}
+
+@Composable
+private fun CardDetailsDialog(details: CardDetails, onDismiss: () -> Unit) {
+    val darkMode = LocalDarkMode.current
+    val bg = if (darkMode) Color(0xFF17181C) else Color.White
+    val ink = if (darkMode) Color.White else Color(0xFF17181C)
+    val textMuted = if (darkMode) Color.White.copy(alpha = 0.5f) else Color(0xFF8B8F98)
+    val closeTint = if (darkMode) Color.White.copy(alpha = 0.6f) else Color(0xFF8B8F98)
+    val border = if (darkMode) Color(0xFF2A2D3A) else Color(0xFFECEEF2)
+    Dialog(onDismissRequest = onDismiss) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(24.dp))
+                .background(bg)
+                .border(1.dp, border, RoundedCornerShape(24.dp))
+                .padding(28.dp)
+        ) {
+            Column {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Détails de la carte", color = ink, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    IconButton(onClick = onDismiss, modifier = Modifier.size(28.dp)) {
+                        Icon(Icons.Default.Close, null, tint = closeTint, modifier = Modifier.size(20.dp))
+                    }
+                }
+
+                Spacer(Modifier.height(24.dp))
+
+                CardDetailRow(label = "Numéro", value = details.cardNumber, ink = ink, muted = textMuted)
+                Spacer(Modifier.height(16.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(32.dp)) {
+                    CardDetailRowCompact(label = "Expiration", value = details.expiryDate, ink = ink, muted = textMuted)
+                    CardDetailRowCompact(label = "CVV", value = details.cvv, ink = ink, muted = textMuted)
+                }
+
+                Spacer(Modifier.height(24.dp))
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(if (darkMode) Color(0xFF2A1010) else Color(0xFFFEF2F2))
+                        .padding(12.dp)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Lock, null, tint = Color(0xFFEF4444), modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            "Ne partagez jamais ces informations",
+                            color = Color(0xFFEF4444),
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+
+                Spacer(Modifier.height(20.dp))
+
+                Button(
+                    onClick = onDismiss,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = BgSurfaceHigh)
+                ) {
+                    Text("Fermer", color = Color.White, fontWeight = FontWeight.SemiBold)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CardDetailRow(label: String, value: String, ink: Color, muted: Color) {
+    Column {
+        Text(label, color = muted, fontSize = 12.sp)
+        Spacer(Modifier.height(4.dp))
+        Text(value, color = ink, fontSize = 18.sp, fontWeight = FontWeight.Medium, fontFamily = FontFamily.Monospace, letterSpacing = 1.sp)
+    }
+}
+
+@Composable
+private fun CardDetailRowCompact(label: String, value: String, ink: Color, muted: Color) {
+    Column {
+        Text(label, color = muted, fontSize = 12.sp)
+        Spacer(Modifier.height(4.dp))
+        Text(value, color = ink, fontSize = 18.sp, fontWeight = FontWeight.Medium, fontFamily = FontFamily.Monospace, letterSpacing = 1.sp)
+    }
 }
 
 private fun formatDateHeader(dateStr: String): String {

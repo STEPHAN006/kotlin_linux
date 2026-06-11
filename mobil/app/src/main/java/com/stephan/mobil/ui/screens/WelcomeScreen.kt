@@ -256,6 +256,14 @@ fun WelcomeScreen(
                         fontWeight = FontWeight.Bold
                     )
                 }
+
+                Text(
+                    text = "Stephan & Cassie",
+                    color = Color.White.copy(alpha = 0.38f),
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium,
+                    letterSpacing = 1.2.sp
+                )
             }
         }
 
@@ -580,7 +588,7 @@ fun PremiumCardVisual(modifier: Modifier = Modifier) {
                 Brush.linearGradient(
                     colors = listOf(
                         Color(0xFF00E676).copy(alpha = 0.2f),
-                        Color(0xFF7C4DFF).copy(alpha = 0.3f),
+                        Color(0xFF333537).copy(alpha = 0.3f),
                         Color(0xFFFF5252).copy(alpha = 0.2f)
                     )
                 ),

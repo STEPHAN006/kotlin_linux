@@ -12,9 +12,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -33,7 +35,7 @@ private val KycBg       = Color(0xFFF4F5F7)
 private val KycCard     = Color.White
 private val KycInk      = Color(0xFF17181C)
 private val KycMuted    = Color(0xFF8B8F98)
-private val KycRed      = Color(0xFFD92C55)
+private val KycRed      = Color(0xFF101114)
 private val KycBorder   = Color(0xFFE5E7EB)
 private val KycSuccess  = Color(0xFF10B981)
 private val KycAmber    = Color(0xFFF59E0B)
@@ -41,21 +43,31 @@ private val KycAmber    = Color(0xFFF59E0B)
 @Composable
 fun KycScreen(
     state: BankUiState,
-    vm: BankViewModel
+    vm: BankViewModel,
+    onBack: (() -> Unit)? = null
 ) {
     val kycStatus = state.user?.kycStatus ?: "none"
 
     when (kycStatus) {
-        "pending"  -> KycPendingContent(state, vm)
-        "approved" -> Unit // handled at navigation level
-        else       -> KycFormContent(state, vm)
+        "pending"  -> KycPendingContent(state, vm, onBack)
+        "approved" -> { onBack?.invoke() }
+        else       -> KycFormContent(state, vm, onBack)
     }
 }
 
 // ─── Pending screen ─────────────────────────────────────────────────────────
 
 @Composable
-private fun KycPendingContent(state: BankUiState, vm: BankViewModel) {
+private fun KycPendingContent(state: BankUiState, vm: BankViewModel, onBack: (() -> Unit)? = null) {
+    var isRefreshing by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(30_000L)
+            vm.refreshKycStatus()
+        }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -111,6 +123,38 @@ private fun KycPendingContent(state: BankUiState, vm: BankViewModel) {
                 }
             }
             Spacer(Modifier.height(32.dp))
+            Button(
+                onClick = {
+                    isRefreshing = true
+                    vm.refreshKycStatus()
+                    isRefreshing = false
+                },
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = KycSuccess),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                if (isRefreshing) {
+                    CircularProgressIndicator(color = Color.White, modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                } else {
+                    Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
+                }
+                Spacer(Modifier.width(8.dp))
+                Text("Vérifier le statut", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+            }
+            Spacer(Modifier.height(12.dp))
+            if (onBack != null) {
+                OutlinedButton(
+                    onClick = onBack,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = KycAmber),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Retourner à l'accueil", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                }
+                Spacer(Modifier.height(12.dp))
+            }
             OutlinedButton(
                 onClick = { vm.logout() },
                 shape = RoundedCornerShape(12.dp),
@@ -162,7 +206,7 @@ private fun KycStep(number: Int, label: String, done: Boolean, inProgress: Boole
 // ─── Submission form ─────────────────────────────────────────────────────────
 
 @Composable
-private fun KycFormContent(state: BankUiState, vm: BankViewModel) {
+private fun KycFormContent(state: BankUiState, vm: BankViewModel, onBack: (() -> Unit)? = null) {
     val kycStatus = state.user?.kycStatus ?: "none"
     val isRejected = kycStatus == "rejected"
     var cinFullName by remember { mutableStateOf("") }
@@ -193,11 +237,27 @@ private fun KycFormContent(state: BankUiState, vm: BankViewModel) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(
-                        Brush.verticalGradient(listOf(Color(0xFFB80035), KycRed))
+                        Brush.verticalGradient(listOf(Color(0xFF0D0D0D), Color(0xFF101114)))
                     )
-                    .padding(top = 52.dp, bottom = 32.dp, start = 24.dp, end = 24.dp)
+                    .padding(bottom = 32.dp, start = 24.dp, end = 24.dp)
             ) {
                 Column {
+                    if (onBack != null) {
+                        Spacer(Modifier.height(12.dp))
+                        IconButton(
+                            onClick = onBack,
+                            modifier = Modifier.offset(x = (-12).dp)
+                        ) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Retour",
+                                tint = Color.White
+                            )
+                        }
+                        Spacer(Modifier.height(8.dp))
+                    } else {
+                        Spacer(Modifier.height(52.dp))
+                    }
                     Box(
                         modifier = Modifier
                             .size(56.dp)
@@ -221,7 +281,7 @@ private fun KycFormContent(state: BankUiState, vm: BankViewModel) {
                     Spacer(Modifier.height(6.dp))
                     Text(
                         if (isRejected) "Votre dossier a été refusé. Corrigez les informations et re-soumettez."
-                        else "Pour accéder à l'application, veuillez vérifier votre identité.",
+                        else "Vérifiez votre identité pour débloquer toutes les fonctionnalités.",
                         fontSize = 14.sp,
                         color = Color.White.copy(alpha = 0.8f),
                         lineHeight = 20.sp

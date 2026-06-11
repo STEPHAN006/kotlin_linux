@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -41,6 +42,11 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.CreditCard
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.AccountBalanceWallet
+import androidx.compose.material.icons.filled.Receipt
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.HeadsetMic
 import androidx.compose.material.icons.filled.Image
@@ -53,11 +59,15 @@ import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.RemoveRedEye
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.HourglassEmpty
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.VerifiedUser
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.Mail
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -91,11 +101,20 @@ import com.google.zxing.PlanarYUVLuminanceSource
 import com.google.zxing.common.HybridBinarizer
 import com.google.zxing.qrcode.QRCodeWriter
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
+import android.net.Uri
+import coil.compose.AsyncImage
 import com.stephan.mobil.data.model.Transaction
+import com.stephan.mobil.ui.theme.*
+import com.stephan.mobil.ui.theme.LocalDarkMode
 import com.stephan.mobil.ui.viewmodel.BankUiState
 import com.stephan.mobil.ui.viewmodel.BankViewModel
+import com.stephan.mobil.ui.viewmodel.CryptoUiState
+import com.stephan.mobil.ui.viewmodel.SupportUiState
+import com.stephan.mobil.ui.viewmodel.SupportViewModel
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 
-private enum class HomeOverlay { None, Qr, Notifications, Support }
+private enum class HomeOverlay { None, Qr, Notifications, Support, Converter }
 private enum class QrMode { Choice, Scan, Receive, Pay }
 
 private val PageBg = Color(0xFFFFFFFF)
@@ -109,13 +128,19 @@ private val Success = Color(0xFF5DBB82)
 @Composable
 fun DashboardScreen(
     state: BankUiState,
+    cryptoState: CryptoUiState,
     vm: BankViewModel,
+    supportVm: SupportViewModel,
     openTransfer: () -> Unit,
     openCards: () -> Unit,
-    darkMode: Boolean = false,
-    onFullScreenChanged: (Boolean) -> Unit = {}
+    openDeposit: () -> Unit = {},
+    openWithdraw: () -> Unit = {},
+    onFullScreenChanged: (Boolean) -> Unit = {},
+    onOpenKyc: () -> Unit = {}
 ) {
+    val darkMode = LocalDarkMode.current
     var overlay by remember { mutableStateOf(HomeOverlay.None) }
+    val supportState by supportVm.uiState.collectAsState()
 
     androidx.compose.runtime.LaunchedEffect(overlay) {
         onFullScreenChanged(overlay != HomeOverlay.None)
@@ -132,41 +157,74 @@ fun DashboardScreen(
             vm = vm,
             onBack = { overlay = HomeOverlay.None }
         )
-        HomeOverlay.Support -> SupportChatScreen(onBack = { overlay = HomeOverlay.None })
+        HomeOverlay.Support -> SupportChatScreen(
+            supportState = supportState,
+            supportVm = supportVm,
+            onBack = { overlay = HomeOverlay.None }
+        )
+        HomeOverlay.Converter -> CurrencyConverterScreen(
+            state = state,
+            cryptoState = cryptoState,
+            vm = vm,
+            onBack = { overlay = HomeOverlay.None }
+        )
         HomeOverlay.None -> HomeContent(
             state = state,
+            cryptoState = cryptoState,
             onScan = { overlay = HomeOverlay.Qr },
             onNotifications = { overlay = HomeOverlay.Notifications },
             onSupport = { overlay = HomeOverlay.Support },
+            onConvert = { overlay = HomeOverlay.Converter },
             openTransfer = openTransfer,
             openCards = openCards,
+            openDeposit = openDeposit,
+            openWithdraw = openWithdraw,
             vm = vm,
-            darkMode = darkMode
+            onOpenKyc = onOpenKyc
         )
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun HomeContent(
     state: BankUiState,
+    cryptoState: CryptoUiState,
     onScan: () -> Unit,
     onNotifications: () -> Unit,
     onSupport: () -> Unit,
+    onConvert: () -> Unit,
     openTransfer: () -> Unit,
     openCards: () -> Unit,
+    openDeposit: () -> Unit = {},
+    openWithdraw: () -> Unit = {},
     vm: BankViewModel,
-    darkMode: Boolean
+    onOpenKyc: () -> Unit = {}
 ) {
+    val darkMode = LocalDarkMode.current
     var showBalance by remember { mutableStateOf(true) }
-    val mga = state.mgaPerUsd
+    var selectedCurrency by remember { mutableStateOf("MGA") }
+    var selectedTxn by remember { mutableStateOf<Transaction?>(null) }
+    if (selectedTxn != null) {
+        TransactionDetailSheet(txn = selectedTxn!!, onDismiss = { selectedTxn = null })
+        return
+    }
+    val mga = cryptoState.mgaPerUsd
     val totalMga = state.balance.totalBalance
     val totalUsd = totalMga / mga
-    val cryptoTotalUsd = state.cryptoWallets.sumOf { wallet ->
-        val price = state.cryptoMarkets.find { it.id == wallet.coinId }?.currentPrice ?: 0.0
+    val cryptoTotalUsd = cryptoState.cryptoWallets.sumOf { wallet ->
+        val price = cryptoState.cryptoMarkets.find { it.id == wallet.coinId }?.currentPrice ?: 0.0
         wallet.balance * price
     }
     val grandTotalUsd = totalUsd + cryptoTotalUsd
+    val grandTotalMga = totalMga + cryptoTotalUsd * mga
+    val grandTotalEur = grandTotalMga / cryptoState.mgaPerEur
 
+    PullToRefreshBox(
+        isRefreshing = state.loading,
+        onRefresh = { vm.refreshAll() },
+        modifier = Modifier.fillMaxSize()
+    ) {
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -218,32 +276,54 @@ private fun HomeContent(
                             null, tint = Muted, modifier = Modifier.size(17.dp)
                         )
                     }
+                    Spacer(Modifier.weight(1f))
+                    CurrencyToggle(
+                        selected = selectedCurrency,
+                        onSelect = { selectedCurrency = it }
+                    )
                 }
                 Spacer(Modifier.height(10.dp))
                 Row(verticalAlignment = Alignment.Bottom) {
                     Text(
-                        text = if (showBalance) "%.2f".format(grandTotalUsd) else "••••",
+                        text = if (showBalance) {
+                            if (selectedCurrency == "MGA")
+                                "%,.0f".format(grandTotalMga).replace(",", " ")
+                            else
+                                "%.2f".format(grandTotalEur)
+                        } else "••••",
                         color = ink, fontSize = 44.sp, fontWeight = FontWeight.Bold
                     )
                     Spacer(Modifier.width(10.dp))
-                    Text("USD", color = ink, fontSize = 18.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 8.dp))
+                    Text(
+                        selectedCurrency,
+                        color = ink, fontSize = 18.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
                 }
                 if (showBalance) {
-                    Text(
-                        "≈ %,.0f MGA".format(totalMga).replace(",", " ") +
-                                if (cryptoTotalUsd > 0) " + %.2f USD crypto".format(cryptoTotalUsd) else "",
-                        color = Muted, fontSize = 12.sp
-                    )
+                    val sub = if (selectedCurrency == "MGA")
+                        "≈ %.2f EUR".format(grandTotalEur)
+                    else
+                        "≈ %,.0f MGA".format(grandTotalMga).replace(",", " ")
+                    Text(sub, color = Muted, fontSize = 12.sp)
                 }
             }
         }
 
         item {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                HomeAction("Dépôt", Icons.Default.Add, true) { vm.notify("Depot: choisissez un compte dans Actifs") }
+                HomeAction("Dépôt", Icons.Default.Add, true) { openDeposit() }
                 HomeAction("Acheter Crypto", Icons.Default.Bolt) { vm.notify("Achat crypto pret: selectionnez un actif") }
-                HomeAction("Convertir", Icons.Default.SwapHoriz) { openTransfer() }
-                HomeAction("Plus", Icons.Default.MoreHoriz) { openCards() }
+                HomeAction("Convertir", Icons.Default.SwapHoriz) { onConvert() }
+                HomeAction("Retrait", Icons.Default.KeyboardArrowDown) { openWithdraw() }
+            }
+        }
+
+        val kycStatus = state.user?.kycStatus ?: "none"
+        if (state.user != null && kycStatus != "approved") {
+            item {
+                KycBanner(kycStatus = kycStatus, onClick = onOpenKyc)
             }
         }
 
@@ -257,7 +337,7 @@ private fun HomeContent(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(Modifier.weight(1f)) {
-                    Text("Inviter des amis", color = Muted, fontSize = 15.sp)
+                    Text("Inviter des amis", color = Color(0xFF737780), fontSize = 15.sp)
                     Spacer(Modifier.height(6.dp))
                     Text(
                         "Gagnez jusqu'à 40 % de commissions",
@@ -285,24 +365,27 @@ private fun HomeContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(10.dp))
-                    .background(Color.White)
-                    .border(1.dp, Line, RoundedCornerShape(10.dp))
+                    .background(if (darkMode) BgSurface else Color.White)
+                    .border(1.dp, if (darkMode) BgSurfaceTop else Line, RoundedCornerShape(10.dp))
                     .padding(18.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text("Crédit", color = Ink, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                    Text("Crédit", color = if (darkMode) TextPrimary else Ink, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
                     Icon(Icons.Default.KeyboardArrowRight, null, tint = Muted)
                 }
                 Spacer(Modifier.height(22.dp))
                 Text("Limite jusqu'à (USD)", color = Muted, fontSize = 14.sp)
-                Text("****", color = Ink, fontSize = 26.sp, fontWeight = FontWeight.Bold)
+                Text("****", color = if (darkMode) TextPrimary else Ink, fontSize = 26.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(18.dp))
                 Button(
                     onClick = openCards,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(28.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Ink),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (darkMode) BgSurfaceHigh else Color.White,
+                        contentColor = if (darkMode) TextPrimary else Ink
+                    ),
                     elevation = ButtonDefaults.buttonElevation(defaultElevation = 5.dp)
                 ) {
                     Text("Obtenez votre limite", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
@@ -312,7 +395,7 @@ private fun HomeContent(
 
         item {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text("Transactions", color = Ink, fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                Text("Transactions", color = if (darkMode) TextPrimary else Ink, fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                 Icon(Icons.Default.MoreHoriz, null, tint = Muted)
             }
         }
@@ -327,23 +410,56 @@ private fun HomeContent(
             }
         } else {
             items(state.transactions.take(5)) { txn ->
-                TransactionLine(txn)
+                TransactionLine(txn, onClick = { selectedTxn = txn })
             }
         }
 
         item { Spacer(Modifier.height(20.dp)) }
     }
+    } // PullToRefreshBox
 }
 
 @Composable
 private fun HeaderIcon(icon: ImageVector, onClick: () -> Unit) {
+    val darkMode = LocalDarkMode.current
     IconButton(onClick = onClick, modifier = Modifier.size(38.dp)) {
-        Icon(icon, contentDescription = null, tint = Ink, modifier = Modifier.size(25.dp))
+        Icon(icon, contentDescription = null, tint = if (darkMode) TextPrimary else Ink, modifier = Modifier.size(25.dp))
+    }
+}
+
+@Composable
+private fun CurrencyToggle(selected: String, onSelect: (String) -> Unit) {
+    val darkMode = LocalDarkMode.current
+    val ink = if (darkMode) Color.White else Ink
+    Row(
+        modifier = androidx.compose.ui.Modifier
+            .border(1.dp, Muted.copy(alpha = 0.3f), RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(20.dp))
+    ) {
+        listOf("MGA", "EUR").forEach { cur ->
+            val isSelected = cur == selected
+            Box(
+                modifier = androidx.compose.ui.Modifier
+                    .background(if (isSelected) Muted.copy(alpha = 0.15f) else Color.Transparent)
+                    .clickable { onSelect(cur) }
+                    .padding(horizontal = 10.dp, vertical = 4.dp)
+            ) {
+                Text(
+                    cur,
+                    fontSize = 12.sp,
+                    color = if (isSelected) ink else Muted,
+                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
+                )
+            }
+        }
     }
 }
 
 @Composable
 private fun HomeAction(label: String, icon: ImageVector, primary: Boolean = false, onClick: () -> Unit) {
+    val darkMode = LocalDarkMode.current
+    val ink = if (darkMode) TextPrimary else Ink
+    val soft = if (darkMode) BgSurfaceHigh else Soft
     Column(
         modifier = Modifier
             .width(78.dp)
@@ -354,58 +470,197 @@ private fun HomeAction(label: String, icon: ImageVector, primary: Boolean = fals
             modifier = Modifier
                 .size(56.dp)
                 .clip(CircleShape)
-                .background(if (primary) Color(0xFF2F3035) else Soft),
+                .background(if (primary) Color(0xFF2F3035) else soft),
             contentAlignment = Alignment.Center
         ) {
-            Icon(icon, null, tint = if (primary) Color.White else Ink, modifier = Modifier.size(27.dp))
+            Icon(icon, null, tint = if (primary) Color.White else ink, modifier = Modifier.size(27.dp))
         }
         Spacer(Modifier.height(8.dp))
-        Text(label, color = Ink, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(label, color = ink, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
 @Composable
-private fun TransactionLine(txn: Transaction) {
+private fun TransactionLine(txn: Transaction, onClick: () -> Unit = {}) {
+    val darkMode = LocalDarkMode.current
     val amount = (if (txn.isCredit) "+" else "-") + "${txn.amount.toLong()} MGA"
     TransactionLine(
         title = txn.description ?: "Opération SCpay",
         amount = amount,
         status = if (txn.isCredit) "Succès" else "Refusé",
         success = txn.isCredit,
-        subtitle = txn.createdAt ?: txn.category ?: "•• 1000"
+        subtitle = txn.dateHuman ?: txn.createdAt ?: txn.category ?: "",
+        onClick = onClick
     )
 }
 
 @Composable
-fun PremiumTransactionRow(txn: Transaction) {
-    TransactionLine(txn)
+fun PremiumTransactionRow(txn: Transaction, onClick: () -> Unit = {}) {
+    val darkMode = LocalDarkMode.current
+    TransactionLine(txn, onClick)
 }
 
 @Composable
-fun TransactionLine(title: String, amount: String, status: String, success: Boolean, subtitle: String) {
+fun TransactionDetailSheet(txn: Transaction, onDismiss: () -> Unit) {
+    val isCredit = txn.isCredit
+    val amountColor = if (isCredit) Color(0xFF00C48C) else Color(0xFFE53935)
+    val amountPrefix = if (isCredit) "+" else "-"
+    val typeLabel = if (isCredit) "Crédit" else "Débit"
+    val typeBg = if (isCredit) Color(0xFFE8F9F3) else Color(0xFFFDECEC)
+
+    val categoryIcon = when (txn.category) {
+        "transfer" -> Icons.Default.SwapHoriz
+        "payment"  -> Icons.Default.CreditCard
+        "deposit"  -> Icons.Default.AccountBalanceWallet
+        "fee"      -> Icons.Default.Receipt
+        else       -> if (isCredit) Icons.Default.ArrowDownward else Icons.Default.ArrowUpward
+    }
+
+    val dateFormatted = txn.createdAt?.let {
+        runCatching {
+            val parser = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'", java.util.Locale.getDefault())
+            val fmt    = java.text.SimpleDateFormat("dd/MM/yyyy  •  HH:mm", java.util.Locale.getDefault())
+            fmt.format(parser.parse(it)!!)
+        }.getOrElse { txn.createdAt }
+    } ?: "—"
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFF7F8FA))
+            .statusBarsPadding()
+    ) {
+        // ── Barre de navigation ──────────────────────────────────────────
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color.White)
+                .padding(horizontal = 8.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onDismiss) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = Color(0xFF17181C))
+            }
+            Text(
+                "Détail de la transaction",
+                fontSize = 17.sp, fontWeight = FontWeight.SemiBold,
+                color = Color(0xFF17181C)
+            )
+        }
+
+        // ── Hero : icône + montant ───────────────────────────────────────
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color.White)
+                .padding(vertical = 32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(72.dp)
+                    .clip(CircleShape)
+                    .background(typeBg),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(categoryIcon, null, tint = amountColor, modifier = Modifier.size(36.dp))
+            }
+            Spacer(Modifier.height(20.dp))
+            Text(
+                "$amountPrefix%,.0f MGA".format(txn.amount).replace(",", " "),
+                fontSize = 40.sp, fontWeight = FontWeight.Bold, color = amountColor,
+                letterSpacing = (-1).sp
+            )
+            Spacer(Modifier.height(8.dp))
+            Surface(shape = RoundedCornerShape(50), color = typeBg) {
+                Text(typeLabel, color = amountColor, fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 5.dp))
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        // ── Carte détails ────────────────────────────────────────────────
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .background(Color.White)
+                .padding(horizontal = 20.dp, vertical = 8.dp)
+        ) {
+            TxDetailRow("Description", txn.description ?: "Opération SCpay")
+            HorizontalDivider(color = Color(0xFFF0F1F3))
+            TxDetailRow("Date", dateFormatted)
+            if (!txn.dateHuman.isNullOrBlank()) {
+                HorizontalDivider(color = Color(0xFFF0F1F3))
+                TxDetailRow("", txn.dateHuman)
+            }
+            if (!txn.reference.isNullOrBlank()) {
+                HorizontalDivider(color = Color(0xFFF0F1F3))
+                TxDetailRow("Référence", txn.reference)
+            }
+            if (!txn.category.isNullOrBlank()) {
+                HorizontalDivider(color = Color(0xFFF0F1F3))
+                TxDetailRow("Catégorie", txn.category.replaceFirstChar { it.uppercase() })
+            }
+            HorizontalDivider(color = Color(0xFFF0F1F3))
+            TxDetailRow("Sens", typeLabel)
+            if (txn.balanceAfter != null) {
+                HorizontalDivider(color = Color(0xFFF0F1F3))
+                TxDetailRow("Solde après", "%,.0f MGA".format(txn.balanceAfter).replace(",", " "))
+            }
+        }
+    }
+}
+
+@Composable
+private fun TxDetailRow(label: String, value: String) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color.White)
-            .padding(vertical = 8.dp),
+            .padding(vertical = 14.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(label, color = Color(0xFF8B8F98), fontSize = 14.sp, modifier = Modifier.weight(1f))
+        Text(value, color = Color(0xFF17181C), fontSize = 14.sp, fontWeight = FontWeight.Medium,
+            textAlign = TextAlign.End, modifier = Modifier.weight(2f))
+    }
+}
+
+@Composable
+fun TransactionLine(title: String, amount: String, status: String, success: Boolean, subtitle: String, onClick: () -> Unit = {}) {
+    val darkMode = LocalDarkMode.current
+    val rowBg = if (darkMode) BgSurface else Color.White
+    val ink = if (darkMode) TextPrimary else Ink
+    val muted = if (darkMode) TextSecondary else Muted
+    val iconBg = if (darkMode) BgSurfaceHigh else Soft
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(rowBg)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
             modifier = Modifier
                 .size(42.dp)
                 .clip(CircleShape)
-                .background(Soft),
+                .background(iconBg),
             contentAlignment = Alignment.Center
         ) {
-            Icon(Icons.Default.CreditCard, null, tint = Ink, modifier = Modifier.size(20.dp))
+            Icon(Icons.Default.CreditCard, null, tint = ink, modifier = Modifier.size(20.dp))
         }
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
-            Text(title, color = Ink, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(subtitle, color = Muted, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(title, color = ink, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(subtitle, color = muted, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         Column(horizontalAlignment = Alignment.End) {
-            Text(amount, color = Ink, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+            Text(amount, color = ink, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
             Text(status, color = if (success) Success else Danger, fontSize = 13.sp)
         }
     }
@@ -639,12 +894,12 @@ private fun PayQrScreen(state: BankUiState, onConfirm: (Double) -> Unit, onBack:
                     modifier = Modifier
                         .size(48.dp)
                         .clip(CircleShape)
-                        .background(Color(0xFFD92C55).copy(alpha = 0.12f)),
+                        .background(BrandPrimary.copy(alpha = 0.12f)),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = (scanResult?.recipientName?.take(2) ?: "??").uppercase(),
-                        color = Color(0xFFD92C55),
+                        color = BrandPrimary,
                         fontWeight = FontWeight.Bold,
                         fontSize = 18.sp
                     )
@@ -680,7 +935,7 @@ private fun PayQrScreen(state: BankUiState, onConfirm: (Double) -> Unit, onBack:
             shape = RoundedCornerShape(16.dp),
             singleLine = true,
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = Color(0xFFD92C55),
+                focusedBorderColor = BrandPrimary,
                 unfocusedBorderColor = Color(0xFFE6E8EC)
             )
         )
@@ -697,7 +952,7 @@ private fun PayQrScreen(state: BankUiState, onConfirm: (Double) -> Unit, onBack:
             modifier = Modifier.fillMaxWidth().height(60.dp),
             enabled = amount.isNotEmpty() && (amount.toDoubleOrNull() ?: 0.0) > 0,
             shape = RoundedCornerShape(30.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD92C55))
+            colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary)
         ) {
             Text("Confirmer le paiement", fontSize = 18.sp, fontWeight = FontWeight.Bold)
         }
@@ -854,7 +1109,7 @@ private fun ScanToPayScreen(
                         .fillMaxWidth()
                         .height(2.dp)
                         .offset(y = translateY.dp)
-                        .background(Color(0xFFD92C55))
+                        .background(BrandPrimary)
                 )
 
                 Box(
@@ -881,35 +1136,41 @@ private fun ScanToPayScreen(
                     Text("SC", color = Color(0xFF2D5BFF), fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 }
                 Box(Modifier.size(48.dp).clip(CircleShape).background(Color.White), contentAlignment = Alignment.Center) {
-                    Text("V", color = Color(0xFFD92C55), fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                    Text("V", color = BrandPrimary, fontSize = 24.sp, fontWeight = FontWeight.Bold)
                 }
             }
-            Spacer(Modifier.weight(1f))
+            Spacer(Modifier.height(18.dp))
             OutlinedTextField(
                 value = payloadToScan,
                 onValueChange = onPayloadChange,
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("Coller un payload QR ici pour simuler", color = Color.Gray) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 58.dp),
+                placeholder = { Text("Coller un payload QR ici pour simuler", color = Color.White.copy(alpha = 0.62f)) },
                 shape = RoundedCornerShape(14.dp),
                 colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
                     focusedTextColor = Color.White,
                     unfocusedTextColor = Color.White,
-                    focusedBorderColor = Color.White,
-                    unfocusedBorderColor = Color.White.copy(alpha = 0.5f)
-                )
+                    focusedBorderColor = Color.White.copy(alpha = 0.86f),
+                    unfocusedBorderColor = Color.White.copy(alpha = 0.5f),
+                    cursorColor = BrandPrimary,
+                    focusedContainerColor = Color.White.copy(alpha = 0.06f),
+                    unfocusedContainerColor = Color.White.copy(alpha = 0.04f)
+                ),
+                singleLine = true
             )
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(12.dp))
             Button(
                 onClick = onScan,
-                modifier = Modifier.fillMaxWidth().height(56.dp),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Ink),
                 shape = RoundedCornerShape(28.dp)
             ) {
                 Icon(Icons.Default.QrCodeScanner, null)
                 Spacer(Modifier.width(8.dp))
-                Text("Valider le scan")
+                Text("Valider le scan", fontWeight = FontWeight.SemiBold, maxLines = 1)
             }
-            Spacer(Modifier.height(22.dp))
+            Spacer(Modifier.height(14.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
                 ScanBottomAction("Mon code", Icons.Default.QrCode2, onMyCode)
                 ScanBottomAction("Album", Icons.Default.Image, onPhotos)
@@ -981,7 +1242,7 @@ private fun NotificationsScreen(
                 Text("Notifications", color = Ink, fontSize = 22.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
                 if (unreadCount > 0) {
                     TextButton(onClick = { vm.markAllNotificationsRead() }) {
-                        Text("Tout lire", color = Color(0xFFD92C55), fontSize = 13.sp)
+                        Text("Tout lire", color = BrandPrimary, fontSize = 13.sp)
                     }
                 }
             }
@@ -1014,12 +1275,12 @@ private fun NotificationsScreen(
                         modifier = Modifier
                             .size(38.dp)
                             .clip(CircleShape)
-                            .background(if (!notif.read) Color(0xFFD92C55).copy(alpha = 0.12f) else Soft),
+                            .background(if (!notif.read) BrandPrimary.copy(alpha = 0.12f) else Soft),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             Icons.Outlined.Mail, null,
-                            tint = if (!notif.read) Color(0xFFD92C55) else Muted,
+                            tint = if (!notif.read) BrandPrimary else Muted,
                             modifier = Modifier.size(18.dp)
                         )
                     }
@@ -1034,7 +1295,7 @@ private fun NotificationsScreen(
                                 modifier = Modifier.weight(1f)
                             )
                             if (!notif.read) {
-                                Box(Modifier.size(8.dp).clip(CircleShape).background(Color(0xFFD92C55)))
+                                Box(Modifier.size(8.dp).clip(CircleShape).background(BrandPrimary))
                             }
                         }
                         Spacer(Modifier.height(4.dp))
@@ -1053,39 +1314,24 @@ private fun NotificationsScreen(
 }
 
 @Composable
-private fun SupportChatScreen(onBack: () -> Unit) {
+private fun SupportChatScreen(
+    supportState: SupportUiState,
+    supportVm: SupportViewModel,
+    onBack: () -> Unit
+) {
     var message by remember { mutableStateOf("") }
-    var selectedSubject by remember { mutableStateOf("") }
-    var showNewTicket by remember { mutableStateOf(false) }
-    var showSubjectPicker by remember { mutableStateOf(false) }
+    var pendingImageUri by remember { mutableStateOf<Uri?>(null) }
 
-    // Simulated ticket history
-    val tickets = remember {
-        listOf(
-            Triple("Virement bloqué", "resolved", "Mon virement de 500 000 MGA n'est pas arrivé…"),
-            Triple("Carte virtuelle refusée", "open", "Ma carte est refusée en ligne alors qu'elle est active"),
-        )
-    }
+    val imagePicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri -> pendingImageUri = uri }
 
-    val subjects = listOf("Virement / Paiement", "Carte virtuelle", "QR Code", "Compte bloqué", "Fraude suspectée", "Autre")
-    var messages by remember {
-        mutableStateOf(
-            listOf(
-                "Bienvenue chez SCpay ! Je suis votre assistant, ici pour vous aider.\n\nDécrivez votre problème avec le plus de détails possible ou choisissez un sujet ci-dessous."
-            )
-        )
-    }
+    LaunchedEffect(Unit) { supportVm.loadSupportTicket() }
 
-    if (showNewTicket) {
-        NewTicketScreen(
-            onBack = { showNewTicket = false },
-            onSend = { subject, msg ->
-                messages = messages + "Nouveau ticket ouvert: [$subject]\n$msg"
-                messages = messages + "Ticket #${(100..999).random()} créé. Un agent SCpay vous répondra sous 24h. Vous recevrez une notification."
-                showNewTicket = false
-            }
-        )
-        return
+    val msgs = supportState.supportTicket?.messages ?: emptyList()
+    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+    LaunchedEffect(msgs.size) {
+        if (msgs.isNotEmpty()) listState.animateScrollToItem(msgs.size - 1)
     }
 
     Column(
@@ -1094,7 +1340,6 @@ private fun SupportChatScreen(onBack: () -> Unit) {
             .background(PageBg)
             .statusBarsPadding()
     ) {
-        // Header
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1104,10 +1349,7 @@ private fun SupportChatScreen(onBack: () -> Unit) {
         ) {
             IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = Ink) }
             Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFFD92C55)),
+                modifier = Modifier.size(36.dp).clip(CircleShape).background(BrandPrimary),
                 contentAlignment = Alignment.Center
             ) {
                 Text("SC", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
@@ -1122,61 +1364,32 @@ private fun SupportChatScreen(onBack: () -> Unit) {
                 }
             }
             Spacer(Modifier.weight(1f))
-            IconButton(onClick = { showNewTicket = true }) {
-                Icon(Icons.Default.Add, null, tint = Color(0xFFD92C55))
+            if (supportState.supportLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(20.dp),
+                    strokeWidth = 2.dp,
+                    color = BrandPrimary
+                )
+                Spacer(Modifier.width(12.dp))
             }
         }
         Divider(color = Line)
 
-        // Quick subjects
-        androidx.compose.foundation.lazy.LazyRow(
-            modifier = Modifier
-                .background(Color.White)
-                .padding(horizontal = 16.dp, vertical = 10.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            items(subjects) { subject ->
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(if (selectedSubject == subject) Ink else Soft)
-                        .clickable {
-                            selectedSubject = subject
-                            messages = messages + subject
-                            messages = messages + "Vous avez sélectionné: **$subject**\nUn agent va vous aider avec ce sujet. Décrivez votre problème en détail ci-dessous."
-                        }
-                        .padding(horizontal = 14.dp, vertical = 7.dp)
-                ) {
-                    Text(
-                        subject,
-                        color = if (selectedSubject == subject) Color.White else Ink,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-            }
-        }
-
-        // Messages list
         androidx.compose.foundation.lazy.LazyColumn(
-            modifier = Modifier
-                .weight(1f)
-                .padding(16.dp),
+            state = listState,
+            modifier = Modifier.weight(1f).padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            items(messages.size) { index ->
-                val isAgent = index % 2 == 0
+            items(msgs) { msg ->
+                val isAgent = msg.isFromAgent
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = if (isAgent) Arrangement.Start else Arrangement.End
                 ) {
                     if (isAgent) {
                         Box(
-                            modifier = Modifier
-                                .size(28.dp)
-                                .clip(CircleShape)
-                                .background(Color(0xFFD92C55))
-                                .align(Alignment.Bottom),
+                            modifier = Modifier.size(28.dp).clip(CircleShape)
+                                .background(BrandPrimary).align(Alignment.Bottom),
                             contentAlignment = Alignment.Center
                         ) {
                             Text("SC", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
@@ -1186,42 +1399,69 @@ private fun SupportChatScreen(onBack: () -> Unit) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth(0.78f)
-                            .clip(
-                                RoundedCornerShape(
-                                    topStart = if (isAgent) 4.dp else 16.dp,
-                                    topEnd = 16.dp,
-                                    bottomEnd = if (isAgent) 16.dp else 4.dp,
-                                    bottomStart = 16.dp
-                                )
-                            )
+                            .clip(RoundedCornerShape(
+                                topStart = if (isAgent) 4.dp else 16.dp,
+                                topEnd = 16.dp,
+                                bottomEnd = if (isAgent) 16.dp else 4.dp,
+                                bottomStart = 16.dp
+                            ))
                             .background(if (isAgent) Soft else Ink)
                             .padding(14.dp)
                     ) {
                         if (isAgent) {
-                            Text("Agent SCpay", color = Color(0xFFD92C55), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            Text("Agent SCpay", color = BrandPrimary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                             Spacer(Modifier.height(4.dp))
                         }
-                        Text(
-                            messages[index],
-                            color = if (isAgent) Ink else Color.White,
-                            fontSize = 14.sp,
-                            lineHeight = 20.sp
-                        )
+                        Text(msg.message, color = if (isAgent) Ink else Color.White, fontSize = 14.sp, lineHeight = 20.sp)
+                        if (!msg.imageUrl.isNullOrBlank()) {
+                            Spacer(Modifier.height(8.dp))
+                            AsyncImage(
+                                model = msg.imageUrl,
+                                contentDescription = "Image",
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(max = 200.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                            )
+                        }
+                        if (msg.createdAt != null) {
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                msg.createdAt,
+                                color = if (isAgent) Muted else Color.White.copy(alpha = 0.6f),
+                                fontSize = 10.sp
+                            )
+                        }
                     }
                 }
             }
         }
 
-        // Input
+        if (pendingImageUri != null) {
+            Row(
+                modifier = Modifier.fillMaxWidth().background(Soft)
+                    .padding(horizontal = 16.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Default.Image, null, tint = Color(0xFF5DBB82), modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Image sélectionnée", color = Color(0xFF5DBB82), fontSize = 13.sp, modifier = Modifier.weight(1f))
+                IconButton(onClick = { pendingImageUri = null }, modifier = Modifier.size(32.dp)) {
+                    Text("✕", color = Muted, fontSize = 14.sp)
+                }
+            }
+        }
+
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(Color.White)
+            modifier = Modifier.fillMaxWidth().background(Color.White)
                 .padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = { showNewTicket = true }) {
-                Icon(Icons.Default.Add, null, tint = Muted)
+            IconButton(onClick = { imagePicker.launch("image/*") }) {
+                Icon(
+                    Icons.Default.Image, null,
+                    tint = if (pendingImageUri != null) Color(0xFF5DBB82) else Muted
+                )
             }
             OutlinedTextField(
                 value = message,
@@ -1231,28 +1471,25 @@ private fun SupportChatScreen(onBack: () -> Unit) {
                 shape = RoundedCornerShape(24.dp),
                 maxLines = 3,
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Color(0xFFD92C55),
+                    focusedBorderColor = BrandPrimary,
                     unfocusedBorderColor = Line
                 )
             )
             Spacer(Modifier.width(8.dp))
             Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(CircleShape)
-                    .background(if (message.isNotBlank()) Color(0xFFD92C55) else Soft)
+                modifier = Modifier.size(44.dp).clip(CircleShape)
+                    .background(if (message.isNotBlank()) BrandPrimary else Soft)
                     .clickable {
                         if (message.isNotBlank()) {
-                            val userMsg = message
-                            messages = messages + userMsg + "Merci pour votre message. Un agent SCpay va traiter votre demande. Temps de réponse estimé: moins de 10 minutes."
+                            supportVm.sendSupportMessage(message, pendingImageUri)
                             message = ""
+                            pendingImageUri = null
                         }
                     },
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    Icons.AutoMirrored.Filled.Send,
-                    null,
+                    Icons.AutoMirrored.Filled.Send, null,
                     tint = if (message.isNotBlank()) Color.White else Muted,
                     modifier = Modifier.size(20.dp)
                 )
@@ -1262,123 +1499,60 @@ private fun SupportChatScreen(onBack: () -> Unit) {
 }
 
 @Composable
-private fun NewTicketScreen(
-    onBack: () -> Unit,
-    onSend: (subject: String, message: String) -> Unit
-) {
-    var subject by remember { mutableStateOf("") }
-    var message by remember { mutableStateOf("") }
-    var category by remember { mutableStateOf("general") }
-    var priority by remember { mutableStateOf("medium") }
-    var hasPhoto by remember { mutableStateOf(false) }
-    val imagePicker = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri ->
-        if (uri != null) hasPhoto = true
+private fun KycBanner(kycStatus: String, onClick: () -> Unit) {
+    val isRejected = kycStatus == "rejected"
+    val isPending = kycStatus == "pending"
+
+    val bgColor    = if (isRejected) Color(0xFFFFF1F2) else Color(0xFFFFFBEB)
+    val borderColor = if (isRejected) Color(0xFFFFCDD5) else Color(0xFFFDE68A)
+    val iconTint   = if (isRejected) BrandPrimary else Color(0xFFF59E0B)
+    val titleColor = if (isRejected) Color(0xFF9B1C2E) else Color(0xFF92400E)
+    val subColor   = if (isRejected) Color(0xFFE11D48) else Color(0xFFF59E0B)
+
+    val title = when {
+        isRejected -> "Dossier refusé"
+        isPending  -> "Vérification en cours"
+        else       -> "Vérifiez votre identité"
+    }
+    val subtitle = when {
+        isRejected -> "Corrigez et re-soumettez vos documents"
+        isPending  -> "Vos documents sont en cours d'examen"
+        else       -> "Complétez la vérification pour accéder à toutes les fonctionnalités"
     }
 
-    Column(
+    Row(
         modifier = Modifier
-            .fillMaxSize()
-            .background(PageBg)
-            .statusBarsPadding()
-            .padding(20.dp)
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(bgColor)
+            .border(1.dp, borderColor, RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = Ink) }
-            Text("Nouveau ticket", color = Ink, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-        }
-        Spacer(Modifier.height(20.dp))
-
-        OutlinedTextField(
-            value = subject,
-            onValueChange = { subject = it },
-            label = { Text("Sujet") },
-            placeholder = { Text("Ex: Virement non reçu") },
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            singleLine = true,
-            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Color(0xFFD92C55))
-        )
-        Spacer(Modifier.height(12.dp))
-
-        // Category chips
-        Text("Catégorie", color = Muted, fontSize = 13.sp)
-        Spacer(Modifier.height(8.dp))
-        androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            val cats = listOf("general", "payment", "card", "account", "fraud", "other")
-            val labels = listOf("Général", "Paiement", "Carte", "Compte", "Fraude", "Autre")
-            items(cats.size) { i ->
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(if (category == cats[i]) Ink else Soft)
-                        .clickable { category = cats[i] }
-                        .padding(horizontal = 14.dp, vertical = 7.dp)
-                ) {
-                    Text(labels[i], color = if (category == cats[i]) Color.White else Ink, fontSize = 13.sp)
-                }
-            }
-        }
-        Spacer(Modifier.height(12.dp))
-
-        OutlinedTextField(
-            value = message,
-            onValueChange = { message = it },
-            label = { Text("Description du problème") },
-            placeholder = { Text("Décrivez votre problème en détail…") },
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .height(140.dp),
-            shape = RoundedCornerShape(12.dp),
-            maxLines = 6,
-            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Color(0xFFD92C55))
-        )
-        Spacer(Modifier.height(12.dp))
-
-        // Photo attachment
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .border(1.dp, Line, RoundedCornerShape(12.dp))
-                .clickable { imagePicker.launch("image/*") }
-                .padding(14.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .size(36.dp)
+                .background(iconTint.copy(alpha = 0.12f), CircleShape),
+            contentAlignment = Alignment.Center
         ) {
             Icon(
-                Icons.Default.Image,
-                null,
-                tint = if (hasPhoto) Color(0xFF5DBB82) else Muted,
-                modifier = Modifier.size(22.dp)
-            )
-            Spacer(Modifier.width(12.dp))
-            Text(
-                if (hasPhoto) "Photo ajoutée ✓" else "Ajouter une capture d'écran (optionnel)",
-                color = if (hasPhoto) Color(0xFF5DBB82) else Muted,
-                fontSize = 14.sp
+                imageVector = when {
+                    isRejected -> Icons.Default.Warning
+                    isPending  -> Icons.Default.HourglassEmpty
+                    else       -> Icons.Default.VerifiedUser
+                },
+                contentDescription = null,
+                tint = iconTint,
+                modifier = Modifier.size(18.dp)
             )
         }
-
-        Spacer(Modifier.weight(1f))
-
-        Button(
-            onClick = {
-                if (subject.isNotBlank() && message.isNotBlank()) {
-                    onSend(subject, message)
-                }
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp),
-            enabled = subject.isNotBlank() && message.isNotBlank(),
-            shape = RoundedCornerShape(28.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD92C55))
-        ) {
-            Icon(Icons.AutoMirrored.Filled.Send, null)
-            Spacer(Modifier.width(8.dp))
-            Text("Envoyer le ticket", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+        Column(Modifier.weight(1f)) {
+            Text(title, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = titleColor)
+            Spacer(Modifier.height(2.dp))
+            Text(subtitle, fontSize = 11.sp, color = subColor, lineHeight = 15.sp)
         }
-        Spacer(Modifier.height(8.dp))
+        Icon(Icons.Default.KeyboardArrowRight, contentDescription = null, tint = iconTint, modifier = Modifier.size(20.dp))
     }
 }
