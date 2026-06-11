@@ -8,12 +8,12 @@ import androidx.compose.ui.graphics.Color
 // ================================================================
 
 // --- BRAND (modifiez ici pour rethémer toute l'app) -------------
-val BrandPrimary        = Color(0xFF6D28D9)   // Violet 700 — accent principal
-val BrandPrimaryDark    = Color(0xFF5B21B6)   // Violet 800 — état pressé
-val BrandPrimaryLight   = Color(0xFF7C3AED)   // Violet 600 — hover/focus
-val BrandPrimarySoft    = Color(0x1A6D28D9)   // Violet 10% — surfaces teintées
-val BrandPrimaryGlow    = Color(0x406D28D9)   // Violet 25% — ombres/glow
-val BrandOnPrimary      = Color(0xFFFFFFFF)   // Texte sur bouton primary
+val BrandPrimary        = Color(0xFFFFFFFF)   // Blanc — accent principal
+val BrandPrimaryDark    = Color(0xFFCCCCCC)   // Gris clair — état pressé
+val BrandPrimaryLight   = Color(0xFFFFFFFF)   // Blanc — hover/focus
+val BrandPrimarySoft    = Color(0x1AFFFFFF)   // Blanc 10% — surfaces teintées
+val BrandPrimaryGlow    = Color(0x40FFFFFF)   // Blanc 25% — ombres/glow
+val BrandOnPrimary      = Color(0xFF101114)   // Texte sombre sur bouton blanc
 
 // --- SEMANTIC ---------------------------------------------------
 val SemanticSuccess     = Color(0xFF5DBB82)   // Crédit / Succès
