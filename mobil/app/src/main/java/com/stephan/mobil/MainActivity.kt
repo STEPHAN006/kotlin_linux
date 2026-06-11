@@ -121,7 +121,6 @@ private fun BankApp(vm: BankViewModel, cryptoVm: CryptoViewModel, supportVm: Sup
     }
 
     if (state.initializing) {
-        val darkMode = LocalDarkMode.current
         Box(
             modifier = Modifier.fillMaxSize().background(Color(0xFF0A0B0E)),
             contentAlignment = androidx.compose.ui.Alignment.Center
@@ -131,9 +130,7 @@ private fun BankApp(vm: BankViewModel, cryptoVm: CryptoViewModel, supportVm: Sup
                 verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center
             ) {
                 Image(
-                    painter = painterResource(
-                        if (darkMode) R.drawable.logo_dark else R.drawable.logo_light
-                    ),
+                    painter = painterResource(R.drawable.logo_dark),
                     contentDescription = "SCpay",
                     modifier = Modifier.size(160.dp)
                 )
