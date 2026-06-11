@@ -76,6 +76,7 @@ fun AssetsScreen(
     cryptoVm: CryptoViewModel
 ) {
     val darkMode = LocalDarkMode.current
+    val brand = LocalBrandColor.current
     var selectedTab by remember { mutableStateOf(0) }
     var balanceVisible by remember { mutableStateOf(true) }
     var selectedCoin by remember { mutableStateOf<CoinMarketData?>(null) }
@@ -246,7 +247,7 @@ fun AssetsScreen(
             if (cryptoState.cryptoLoading) {
                 item {
                     Box(Modifier.fillMaxWidth().padding(40.dp), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = BrandPrimary)
+                        CircularProgressIndicator(color = brand)
                     }
                 }
             } else if (cryptoState.cryptoMarkets.isEmpty()) {
@@ -256,7 +257,7 @@ fun AssetsScreen(
                             Text("Impossible de charger les prix", color = AssetMuted, textAlign = TextAlign.Center)
                             Spacer(Modifier.height(12.dp))
                             TextButton(onClick = { cryptoVm.loadCrypto() }) {
-                                Text("Réessayer", color = BrandPrimary)
+                                Text("Réessayer", color = brand)
                             }
                         }
                     }
@@ -298,7 +299,7 @@ fun AssetsScreen(
                 ) {
                     Text("Cartes virtuelles", color = AssetMuted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
                     Text(
-                        "+ Nouvelle", color = BrandPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold,
+                        "+ Nouvelle", color = brand, fontSize = 13.sp, fontWeight = FontWeight.Bold,
                         modifier = Modifier.clickable {
                             state.balance.accounts.firstOrNull()?.let { vm.createCard(it.id, 5_000_000.0) }
                         }
@@ -485,15 +486,28 @@ private fun formatCryptoBalance(balance: Double): String {
 
 @Composable
 private fun AssetActionBtn(label: String, primary: Boolean, modifier: Modifier, onClick: () -> Unit) {
+    val darkMode = LocalDarkMode.current
+    val bg = when {
+        primary && darkMode  -> Color.White
+        primary && !darkMode -> AssetInk
+        !primary && darkMode -> Color(0xFF2A2D35)
+        else                 -> AssetSoft
+    }
+    val textColor = when {
+        primary && darkMode  -> AssetInk
+        primary && !darkMode -> Color.White
+        !primary && darkMode -> Color.White.copy(alpha = 0.8f)
+        else                 -> AssetInk
+    }
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(10.dp))
-            .background(if (primary) AssetInk else AssetSoft)
+            .background(bg)
             .clickable(onClick = onClick)
             .padding(vertical = 14.dp, horizontal = 8.dp),
         contentAlignment = Alignment.Center
     ) {
-        Text(label, color = if (primary) Color.White else AssetInk, fontSize = 13.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+        Text(label, color = textColor, fontSize = 13.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
     }
 }
 
@@ -533,6 +547,7 @@ private fun AccountFiatRow(account: Account, visible: Boolean, line: Color, ink:
 
 @Composable
 private fun CardRow(card: com.stephan.mobil.data.model.Card, vm: BankViewModel, line: Color, ink: Color) {
+    val brand = LocalBrandColor.current
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -555,7 +570,7 @@ private fun CardRow(card: com.stephan.mobil.data.model.Card, vm: BankViewModel, 
         Switch(
             checked = !card.isBlocked,
             onCheckedChange = { vm.toggleCard(card.id) },
-            colors = SwitchDefaults.colors(checkedTrackColor = BrandPrimary, uncheckedTrackColor = AssetSoft),
+            colors = SwitchDefaults.colors(checkedTrackColor = brand, uncheckedTrackColor = AssetSoft),
             modifier = Modifier.size(width = 44.dp, height = 24.dp)
         )
     }

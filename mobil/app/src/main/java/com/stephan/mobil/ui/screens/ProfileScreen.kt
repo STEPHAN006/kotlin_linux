@@ -43,6 +43,7 @@ fun ProfileScreen(
     onOpenSettings: () -> Unit = {}
 ) {
     val darkMode = LocalDarkMode.current
+    val brand = LocalBrandColor.current
     val context = LocalContext.current
     var biometricEnabled by remember { mutableStateOf(SecurityUtil.isBiometricEnabled(context)) }
 
@@ -61,7 +62,7 @@ fun ProfileScreen(
     val pageBg = if (darkMode) BgBase else Color.White
     val cardBg = if (darkMode) BgSurface else Color.White
     val sectionBg = if (darkMode) BgSurfaceElevated else SoftBackground
-    val ink = if (darkMode) TextPrimary else BgSurface
+    val ink = if (darkMode) TextPrimary else Color(0xFF17181C)
     val muted = if (darkMode) TextSecondary else Color(0xFF737780)
     val border = if (darkMode) BgSurfaceTop else LineColor
 
@@ -76,7 +77,7 @@ fun ProfileScreen(
                     vm.deleteCard(cardId)
                     cardToDeleteId = null
                 }) {
-                    Text("Supprimer", color = BrandPrimary)
+                    Text("Supprimer", color = brand)
                 }
             },
             dismissButton = {
@@ -143,7 +144,7 @@ fun ProfileScreen(
                             ) {
                                 Text(
                                     text = (state.user?.name?.take(2) ?: "SC").uppercase(),
-                                    color = BrandPrimary,
+                                    color = brand,
                                     fontSize = 24.sp,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -154,7 +155,7 @@ fun ProfileScreen(
                     Box(
                         modifier = Modifier
                             .size(28.dp)
-                            .background(BrandPrimary, CircleShape)
+                            .background(brand, CircleShape)
                             .border(2.dp, pageBg, CircleShape)
                             .clickable { imagePicker.launch("image/*") },
                         contentAlignment = Alignment.Center
@@ -219,7 +220,7 @@ fun ProfileScreen(
                             onCheckedChange = { vm.setMockMode(it) },
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = if (darkMode) BgSurface else Color.White,
-                                checkedTrackColor = BrandPrimary,
+                                checkedTrackColor = brand,
                                 uncheckedThumbColor = muted,
                                 uncheckedTrackColor = if (darkMode) BgSurfaceHigh else Color(0xFFE7E9EE)
                             )
@@ -246,7 +247,7 @@ fun ProfileScreen(
                             onCheckedChange = { onToggleTheme() },
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = if (darkMode) BgSurface else Color.White,
-                                checkedTrackColor = BrandPrimary,
+                                checkedTrackColor = brand,
                                 uncheckedThumbColor = muted,
                                 uncheckedTrackColor = if (darkMode) BgSurfaceHigh else Color(0xFFE7E9EE)
                             )
@@ -277,7 +278,7 @@ fun ProfileScreen(
                             },
                             colors = SwitchDefaults.colors(
                                 checkedThumbColor = if (darkMode) BgSurface else Color.White,
-                                checkedTrackColor = BrandPrimary,
+                                checkedTrackColor = brand,
                                 uncheckedThumbColor = muted,
                                 uncheckedTrackColor = if (darkMode) BgSurfaceHigh else Color(0xFFE7E9EE)
                             )
@@ -337,12 +338,12 @@ fun ProfileScreen(
                                 modifier = Modifier
                                     .weight(1f)
                                     .background(
-                                        if (selected) BrandPrimary.copy(alpha = 0.14f) else sectionBg,
+                                        if (selected) brand.copy(alpha = 0.14f) else sectionBg,
                                         shape = RoundedCornerShape(10.dp)
                                     )
                                     .border(
                                         width = 1.dp,
-                                        color = if (selected) BrandPrimary.copy(alpha = 0.5f) else border,
+                                        color = if (selected) brand.copy(alpha = 0.5f) else border,
                                         shape = RoundedCornerShape(10.dp)
                                     )
                                     .clickable { benefChannel = channel.first }
@@ -351,7 +352,7 @@ fun ProfileScreen(
                             ) {
                                 Text(
                                     text = channel.second,
-                                    color = if (selected) BrandPrimary else ink,
+                                    color = if (selected) brand else ink,
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -374,7 +375,7 @@ fun ProfileScreen(
                             .fillMaxWidth()
                             .height(48.dp),
                         shape = RoundedCornerShape(24.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary)
+                        colors = ButtonDefaults.buttonColors(containerColor = brand)
                     ) {
                         Icon(imageVector = Icons.Default.Add, contentDescription = null, tint = Color.White)
                         Spacer(modifier = Modifier.width(6.dp))
@@ -403,7 +404,7 @@ fun ProfileScreen(
                                     Text("${beneficiary.bankName} · ${beneficiary.accountNumberMasked}", color = muted, fontSize = 12.sp)
                                 }
                                 IconButton(onClick = { vm.deleteBeneficiary(beneficiary.id) }) {
-                                    Icon(Icons.Default.DeleteOutline, contentDescription = "Supprimer", tint = BrandPrimary)
+                                    Icon(Icons.Default.DeleteOutline, contentDescription = "Supprimer", tint = brand)
                                 }
                             }
                         }
@@ -431,12 +432,12 @@ fun ProfileScreen(
                                     Text("Carte •• ${card.lastFour}", color = ink, fontWeight = FontWeight.SemiBold)
                                     Text(
                                         "${card.type} · ${if (card.isBlocked) "Bloquée" else "Active"}",
-                                        color = if (card.isBlocked) BrandPrimary else Color(0xFF16A34A),
+                                        color = if (card.isBlocked) brand else Color(0xFF16A34A),
                                         fontSize = 12.sp
                                     )
                                 }
                                 IconButton(onClick = { cardToDeleteId = card.id }) {
-                                    Icon(Icons.Default.DeleteOutline, contentDescription = "Supprimer", tint = BrandPrimary)
+                                    Icon(Icons.Default.DeleteOutline, contentDescription = "Supprimer", tint = brand)
                                 }
                             }
                         }
@@ -455,7 +456,7 @@ fun ProfileScreen(
                 ) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(text = "Payload du Code QR Généré", color = ink, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                        Text(text = state.qrPayload, color = BrandPrimary, fontSize = 11.sp, modifier = Modifier.fillMaxWidth())
+                        Text(text = state.qrPayload, color = brand, fontSize = 11.sp, modifier = Modifier.fillMaxWidth())
                     }
                 }
             }

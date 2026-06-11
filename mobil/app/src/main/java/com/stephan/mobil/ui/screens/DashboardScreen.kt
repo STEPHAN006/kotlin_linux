@@ -724,23 +724,27 @@ private fun QrCollectionScreen(
 
 @Composable
 private fun QrChoiceScreen(onScan: () -> Unit, onReceive: () -> Unit, onBack: () -> Unit) {
+    val darkMode = LocalDarkMode.current
+    val bg = if (darkMode) BgBase else PageBg
+    val ink = if (darkMode) TextPrimary else Ink
+    val soft = if (darkMode) BgSurfaceElevated else Soft
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(PageBg)
+            .background(bg)
             .statusBarsPadding()
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
         Box(
-            modifier = Modifier.size(80.dp).clip(CircleShape).background(Soft),
+            modifier = Modifier.size(80.dp).clip(CircleShape).background(soft),
             contentAlignment = Alignment.Center
         ) {
-            Icon(Icons.Default.QrCode2, null, tint = Ink, modifier = Modifier.size(40.dp))
+            Icon(Icons.Default.QrCode2, null, tint = ink, modifier = Modifier.size(40.dp))
         }
         Spacer(Modifier.height(24.dp))
-        Text("Paiement QR", fontSize = 32.sp, fontWeight = FontWeight.Bold, color = Ink)
+        Text("Paiement QR", fontSize = 32.sp, fontWeight = FontWeight.Bold, color = ink)
         Spacer(Modifier.height(12.dp))
         Text("Envoyez ou recevez de l'argent instantanément", color = Muted, fontSize = 16.sp)
         Spacer(Modifier.height(48.dp))
@@ -749,7 +753,7 @@ private fun QrChoiceScreen(onScan: () -> Unit, onReceive: () -> Unit, onBack: ()
             onClick = onScan,
             modifier = Modifier.fillMaxWidth().height(56.dp),
             shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Ink)
+            colors = ButtonDefaults.buttonColors(containerColor = ink, contentColor = if (darkMode) BgBase else Color.White)
         ) {
             Icon(Icons.Default.QrCodeScanner, null)
             Spacer(Modifier.width(12.dp))
@@ -762,7 +766,7 @@ private fun QrChoiceScreen(onScan: () -> Unit, onReceive: () -> Unit, onBack: ()
             onClick = onReceive,
             modifier = Modifier.fillMaxWidth().height(56.dp),
             shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Soft, contentColor = Ink)
+            colors = ButtonDefaults.buttonColors(containerColor = soft, contentColor = ink)
         ) {
             Icon(Icons.Default.QrCode2, null)
             Spacer(Modifier.width(12.dp))
@@ -789,20 +793,23 @@ private fun QrReceiveScreen(state: BankUiState, onBack: () -> Unit, onGenerate: 
         val json = Gson().toJson(demoMap)
         Base64.encodeToString(json.toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
     }
+    val darkMode = LocalDarkMode.current
+    val bg = if (darkMode) BgBase else PageBg
+    val ink = if (darkMode) TextPrimary else Ink
     val context = LocalContext.current
 
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(PageBg)
+            .background(bg)
             .statusBarsPadding()
             .padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(28.dp)
     ) {
         item {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = Ink) }
-                Text("Mon Code", modifier = Modifier.weight(1f), fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = ink) }
+                Text("Mon Code", color = ink, modifier = Modifier.weight(1f), fontSize = 20.sp, fontWeight = FontWeight.Bold)
             }
         }
         item {
@@ -862,6 +869,7 @@ private fun QrReceiveScreen(state: BankUiState, onBack: () -> Unit, onGenerate: 
 @Composable
 private fun PayQrScreen(state: BankUiState, onConfirm: (Double) -> Unit, onBack: () -> Unit) {
     val darkMode   = LocalDarkMode.current
+    val brand      = LocalBrandColor.current
     val pageBg     = if (darkMode) BgBase     else PageBg
     val ink        = if (darkMode) TextPrimary else Ink
     val cardBg     = if (darkMode) BgSurface   else Color(0xFFF7F8FA)
@@ -899,12 +907,12 @@ private fun PayQrScreen(state: BankUiState, onConfirm: (Double) -> Unit, onBack:
                     modifier = Modifier
                         .size(48.dp)
                         .clip(CircleShape)
-                        .background(BrandPrimary.copy(alpha = 0.12f)),
+                        .background(brand.copy(alpha = 0.12f)),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = (scanResult?.recipientName?.take(2) ?: "??").uppercase(),
-                        color = BrandPrimary,
+                        color = brand,
                         fontWeight = FontWeight.Bold,
                         fontSize = 18.sp
                     )
@@ -942,7 +950,7 @@ private fun PayQrScreen(state: BankUiState, onConfirm: (Double) -> Unit, onBack:
             colors = OutlinedTextFieldDefaults.colors(
                 focusedTextColor = ink,
                 unfocusedTextColor = ink,
-                focusedBorderColor = BrandPrimary,
+                focusedBorderColor = brand,
                 unfocusedBorderColor = border
             )
         )
@@ -959,7 +967,7 @@ private fun PayQrScreen(state: BankUiState, onConfirm: (Double) -> Unit, onBack:
             modifier = Modifier.fillMaxWidth().height(60.dp),
             enabled = amount.isNotEmpty() && (amount.toDoubleOrNull() ?: 0.0) > 0,
             shape = RoundedCornerShape(30.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary)
+            colors = ButtonDefaults.buttonColors(containerColor = brand)
         ) {
             Text("Confirmer le paiement", fontSize = 18.sp, fontWeight = FontWeight.Bold)
         }
@@ -1116,7 +1124,7 @@ private fun ScanToPayScreen(
                         .fillMaxWidth()
                         .height(2.dp)
                         .offset(y = translateY.dp)
-                        .background(BrandPrimary)
+                        .background(Color.White)
                 )
 
                 Box(
@@ -1143,7 +1151,7 @@ private fun ScanToPayScreen(
                     Text("SC", color = Color(0xFF2D5BFF), fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 }
                 Box(Modifier.size(48.dp).clip(CircleShape).background(Color.White), contentAlignment = Alignment.Center) {
-                    Text("V", color = BrandPrimary, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                    Text("V", color = Color(0xFF17181C), fontSize = 24.sp, fontWeight = FontWeight.Bold)
                 }
             }
             Spacer(Modifier.height(18.dp))
@@ -1160,7 +1168,7 @@ private fun ScanToPayScreen(
                     unfocusedTextColor = Color.White,
                     focusedBorderColor = Color.White.copy(alpha = 0.86f),
                     unfocusedBorderColor = Color.White.copy(alpha = 0.5f),
-                    cursorColor = BrandPrimary,
+                    cursorColor = Color.White,
                     focusedContainerColor = Color.White.copy(alpha = 0.06f),
                     unfocusedContainerColor = Color.White.copy(alpha = 0.04f)
                 ),
@@ -1232,24 +1240,28 @@ private fun NotificationsScreen(
     onBack: () -> Unit
 ) {
     androidx.compose.runtime.LaunchedEffect(Unit) { vm.loadNotifications() }
+    val darkMode = LocalDarkMode.current
+    val brand = LocalBrandColor.current
+    val bg = if (darkMode) BgBase else PageBg
+    val ink = if (darkMode) TextPrimary else Ink
 
     val unreadCount = state.notifications.count { !it.read }
 
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(PageBg)
+            .background(bg)
             .statusBarsPadding()
             .padding(horizontal = 20.dp),
         verticalArrangement = Arrangement.spacedBy(0.dp)
     ) {
         item {
             Row(Modifier.fillMaxWidth().padding(top = 24.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = Ink) }
-                Text("Notifications", color = Ink, fontSize = 22.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = ink) }
+                Text("Notifications", color = ink, fontSize = 22.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
                 if (unreadCount > 0) {
                     TextButton(onClick = { vm.markAllNotificationsRead() }) {
-                        Text("Tout lire", color = BrandPrimary, fontSize = 13.sp)
+                        Text("Tout lire", color = brand, fontSize = 13.sp)
                     }
                 }
             }
@@ -1282,12 +1294,12 @@ private fun NotificationsScreen(
                         modifier = Modifier
                             .size(38.dp)
                             .clip(CircleShape)
-                            .background(if (!notif.read) BrandPrimary.copy(alpha = 0.12f) else Soft),
+                            .background(if (!notif.read) brand.copy(alpha = 0.12f) else Soft),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             Icons.Outlined.Mail, null,
-                            tint = if (!notif.read) BrandPrimary else Muted,
+                            tint = if (!notif.read) brand else Muted,
                             modifier = Modifier.size(18.dp)
                         )
                     }
@@ -1296,13 +1308,13 @@ private fun NotificationsScreen(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
                                 notif.title,
-                                color = Ink,
+                                color = ink,
                                 fontSize = 15.sp,
                                 fontWeight = if (!notif.read) FontWeight.SemiBold else FontWeight.Normal,
                                 modifier = Modifier.weight(1f)
                             )
                             if (!notif.read) {
-                                Box(Modifier.size(8.dp).clip(CircleShape).background(BrandPrimary))
+                                Box(Modifier.size(8.dp).clip(CircleShape).background(brand))
                             }
                         }
                         Spacer(Modifier.height(4.dp))
@@ -1328,6 +1340,11 @@ private fun SupportChatScreen(
 ) {
     var message by remember { mutableStateOf("") }
     var pendingImageUri by remember { mutableStateOf<Uri?>(null) }
+    val darkMode = LocalDarkMode.current
+    val brand = LocalBrandColor.current
+    val bg = if (darkMode) BgBase else PageBg
+    val headerBg = if (darkMode) BgSurface else Color.White
+    val ink = if (darkMode) TextPrimary else Ink
 
     val imagePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -1344,26 +1361,26 @@ private fun SupportChatScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(PageBg)
+            .background(bg)
             .statusBarsPadding()
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color.White)
+                .background(headerBg)
                 .padding(horizontal = 8.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = Ink) }
+            IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = ink) }
             Box(
-                modifier = Modifier.size(36.dp).clip(CircleShape).background(BrandPrimary),
+                modifier = Modifier.size(36.dp).clip(CircleShape).background(brand),
                 contentAlignment = Alignment.Center
             ) {
-                Text("SC", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Text("SC", color = if (darkMode) BgBase else Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
             }
             Spacer(Modifier.width(10.dp))
             Column {
-                Text("Support SCpay", color = Ink, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                Text("Support SCpay", color = ink, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.size(6.dp).clip(CircleShape).background(Color(0xFF5DBB82)))
                     Spacer(Modifier.width(4.dp))
@@ -1375,7 +1392,7 @@ private fun SupportChatScreen(
                 CircularProgressIndicator(
                     modifier = Modifier.size(20.dp),
                     strokeWidth = 2.dp,
-                    color = BrandPrimary
+                    color = brand
                 )
                 Spacer(Modifier.width(12.dp))
             }
@@ -1396,10 +1413,10 @@ private fun SupportChatScreen(
                     if (isAgent) {
                         Box(
                             modifier = Modifier.size(28.dp).clip(CircleShape)
-                                .background(BrandPrimary).align(Alignment.Bottom),
+                                .background(brand).align(Alignment.Bottom),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text("SC", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            Text("SC", color = if (darkMode) BgBase else Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
                         }
                         Spacer(Modifier.width(8.dp))
                     }
@@ -1416,7 +1433,7 @@ private fun SupportChatScreen(
                             .padding(14.dp)
                     ) {
                         if (isAgent) {
-                            Text("Agent SCpay", color = BrandPrimary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            Text("Agent SCpay", color = brand, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                             Spacer(Modifier.height(4.dp))
                         }
                         Text(msg.message, color = if (isAgent) Ink else Color.White, fontSize = 14.sp, lineHeight = 20.sp)
@@ -1460,7 +1477,7 @@ private fun SupportChatScreen(
         }
 
         Row(
-            modifier = Modifier.fillMaxWidth().background(Color.White)
+            modifier = Modifier.fillMaxWidth().background(headerBg)
                 .padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -1478,14 +1495,14 @@ private fun SupportChatScreen(
                 shape = RoundedCornerShape(24.dp),
                 maxLines = 3,
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = BrandPrimary,
+                    focusedBorderColor = brand,
                     unfocusedBorderColor = Line
                 )
             )
             Spacer(Modifier.width(8.dp))
             Box(
                 modifier = Modifier.size(44.dp).clip(CircleShape)
-                    .background(if (message.isNotBlank()) BrandPrimary else Soft)
+                    .background(if (message.isNotBlank()) brand else Soft)
                     .clickable {
                         if (message.isNotBlank()) {
                             supportVm.sendSupportMessage(message, pendingImageUri)
@@ -1512,7 +1529,7 @@ private fun KycBanner(kycStatus: String, onClick: () -> Unit) {
 
     val bgColor    = if (isRejected) Color(0xFFFFF1F2) else Color(0xFFFFFBEB)
     val borderColor = if (isRejected) Color(0xFFFFCDD5) else Color(0xFFFDE68A)
-    val iconTint   = if (isRejected) BrandPrimary else Color(0xFFF59E0B)
+    val iconTint   = if (isRejected) Color(0xFFE11D48) else Color(0xFFF59E0B)
     val titleColor = if (isRejected) Color(0xFF9B1C2E) else Color(0xFF92400E)
     val subColor   = if (isRejected) Color(0xFFE11D48) else Color(0xFFF59E0B)
 

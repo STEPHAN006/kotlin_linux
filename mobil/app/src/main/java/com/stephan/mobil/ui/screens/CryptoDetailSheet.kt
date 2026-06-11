@@ -131,6 +131,7 @@ fun CryptoDetailSheet(
     val address   = wallet?.address ?: ""
     val mga       = cryptoState.mgaPerUsd
 
+    val brand      = LocalBrandColor.current
     val bg         = if (darkMode) Color(0xFF0D0E12) else Color(0xFFF8F9FB)
     val hdrBg      = if (darkMode) Color(0xFF0D0E12) else Color.White
     val cardBg     = if (darkMode) Color(0xFF1A1C23) else Color.White
@@ -322,11 +323,12 @@ fun CryptoDetailSheet(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                ActionButton("Acheter",  Icons.Default.ShoppingCart, DetailCard, Color(0xFFE11D48), Modifier.weight(1f)) { activeAction = "buy" }
-                ActionButton("Vendre",   Icons.Default.Sell,         DetailCard, SemanticDanger, Modifier.weight(1f)) { activeAction = "sell" }
-                ActionButton("Swap",     Icons.Default.SwapHoriz,    DetailCard, BrandPrimary, Modifier.weight(1f)) { activeAction = "swap" }
-                ActionButton("Envoyer",  Icons.Default.Send,         DetailCard, Color(0xFF2563EB), Modifier.weight(1f)) { activeAction = "send" }
-                ActionButton("Recevoir", Icons.Default.QrCode,       DetailCard, BrandPrimary,      Modifier.weight(1f)) { activeAction = "receive" }
+                val actionBg = if (darkMode) DetailCard else Color(0xFFF0F1F3)
+                ActionButton("Acheter",  Icons.Default.ShoppingCart, actionBg, Color(0xFFE11D48), Modifier.weight(1f)) { activeAction = "buy" }
+                ActionButton("Vendre",   Icons.Default.Sell,         actionBg, SemanticDanger, Modifier.weight(1f)) { activeAction = "sell" }
+                ActionButton("Swap",     Icons.Default.SwapHoriz,    actionBg, brand, Modifier.weight(1f)) { activeAction = "swap" }
+                ActionButton("Envoyer",  Icons.Default.Send,         actionBg, Color(0xFF2563EB), Modifier.weight(1f)) { activeAction = "send" }
+                ActionButton("Recevoir", Icons.Default.QrCode,       actionBg, brand,      Modifier.weight(1f)) { activeAction = "receive" }
             }
 
             // Feedback messages
@@ -635,6 +637,7 @@ private fun SwapModal(
     onClose: () -> Unit
 ) {
     val darkMode = LocalDarkMode.current
+    val brand = LocalBrandColor.current
     var fromSymbol   by remember { mutableStateOf(currentCoin.symbol.uppercase()) }
     var toSymbol     by remember { mutableStateOf("") }
     var fromAmount   by remember { mutableStateOf("") }
@@ -695,7 +698,7 @@ private fun SwapModal(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedTextColor = ink, unfocusedTextColor = ink,
-                        focusedBorderColor = BrandPrimary, unfocusedBorderColor = Color.Transparent,
+                        focusedBorderColor = brand, unfocusedBorderColor = Color.Transparent,
                         focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent
                     ),
                     singleLine = true,
@@ -709,14 +712,14 @@ private fun SwapModal(
                 Text("Disponible: ${formatCryptoQty(fromBal)} $fromSymbol",
                     color = DetailMuted, fontSize = 12.sp, modifier = Modifier.padding(start = 4.dp))
                 TextButton(onClick = { fromAmount = formatCryptoQty(fromBal) }) {
-                    Text("Max", color = BrandPrimary, fontSize = 12.sp)
+                    Text("Max", color = brand, fontSize = 12.sp)
                 }
             }
 
             // Swap arrow
             Box(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
                 Box(
-                    modifier = Modifier.size(36.dp).clip(CircleShape).background(BrandPrimary),
+                    modifier = Modifier.size(36.dp).clip(CircleShape).background(brand),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(Icons.Default.SwapVert, null, tint = Color.White, modifier = Modifier.size(20.dp))
@@ -778,7 +781,7 @@ private fun SwapModal(
                     }
                 },
                 enabled = fromAmt > 0 && fromAmt <= fromBal && toSymbol.isNotEmpty(),
-                colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
+                colors = ButtonDefaults.buttonColors(containerColor = brand),
                 modifier = Modifier.fillMaxWidth().height(50.dp)
             ) {
                 Text("Confirmer le swap", color = Color.White, fontWeight = FontWeight.Bold)
@@ -832,6 +835,7 @@ private fun SwapModal(
 @Composable
 private fun BuyModal(coin: CoinMarketData, cryptoState: CryptoUiState, bankState: BankUiState, cryptoVm: CryptoViewModel, onClose: () -> Unit) {
     val darkMode = LocalDarkMode.current
+    val brand = LocalBrandColor.current
     var amountMga by remember { mutableStateOf("") }
     val price = coin.currentPrice
     val mga = cryptoState.mgaPerUsd
@@ -869,7 +873,7 @@ private fun BuyModal(coin: CoinMarketData, cryptoState: CryptoUiState, bankState
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedTextColor = ink, unfocusedTextColor = ink,
-                    focusedBorderColor = Accent, unfocusedBorderColor = line
+                    focusedBorderColor = brand, unfocusedBorderColor = line
                 ),
                 modifier = Modifier.fillMaxWidth()
             )
@@ -892,7 +896,7 @@ private fun BuyModal(coin: CoinMarketData, cryptoState: CryptoUiState, bankState
                     onClose()
                 },
                 enabled = (amountMga.toDoubleOrNull() ?: 0.0) > 0,
-                colors = ButtonDefaults.buttonColors(containerColor = Accent),
+                colors = ButtonDefaults.buttonColors(containerColor = brand),
                 modifier = Modifier.fillMaxWidth().height(50.dp)
             ) {
                 Text("Confirmer l'achat", color = Color.White, fontWeight = FontWeight.Bold)
@@ -988,6 +992,7 @@ private fun SellModal(coin: CoinMarketData, wallet: CryptoWallet?, cryptoState: 
 @Composable
 private fun SendModal(coin: CoinMarketData, wallet: CryptoWallet?, cryptoState: CryptoUiState, cryptoVm: CryptoViewModel, onClose: () -> Unit) {
     val darkMode = LocalDarkMode.current
+    val brand = LocalBrandColor.current
     var amountCrypto by remember { mutableStateOf("") }
     var toAddress by remember { mutableStateOf("") }
     var showQrScanner by remember { mutableStateOf(false) }
@@ -1030,12 +1035,12 @@ private fun SendModal(coin: CoinMarketData, wallet: CryptoWallet?, cryptoState: 
                 label = { Text("Adresse de destination", color = DetailMuted) },
                 trailingIcon = {
                     IconButton(onClick = { showQrScanner = true }) {
-                        Icon(Icons.Default.QrCodeScanner, contentDescription = "Scanner QR", tint = BrandPrimary)
+                        Icon(Icons.Default.QrCodeScanner, contentDescription = "Scanner QR", tint = brand)
                     }
                 },
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedTextColor = ink, unfocusedTextColor = ink,
-                    focusedBorderColor = BrandPrimary, unfocusedBorderColor = line
+                    focusedBorderColor = brand, unfocusedBorderColor = line
                 ),
                 modifier = Modifier.fillMaxWidth()
             )
@@ -1050,7 +1055,7 @@ private fun SendModal(coin: CoinMarketData, wallet: CryptoWallet?, cryptoState: 
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedTextColor = ink, unfocusedTextColor = ink,
-                    focusedBorderColor = BrandPrimary, unfocusedBorderColor = line
+                    focusedBorderColor = brand, unfocusedBorderColor = line
                 ),
                 modifier = Modifier.fillMaxWidth()
             )
@@ -1078,7 +1083,7 @@ private fun SendModal(coin: CoinMarketData, wallet: CryptoWallet?, cryptoState: 
                 enabled = (amountCrypto.toDoubleOrNull() ?: 0.0) > 0
                         && (amountCrypto.toDoubleOrNull() ?: 0.0) <= balance
                         && toAddress.isNotBlank(),
-                colors = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
+                colors = ButtonDefaults.buttonColors(containerColor = brand),
                 modifier = Modifier.fillMaxWidth().height(50.dp)
             ) {
                 Text("Confirmer l'envoi", color = Color.White, fontWeight = FontWeight.Bold)
@@ -1094,6 +1099,7 @@ private fun SendModal(coin: CoinMarketData, wallet: CryptoWallet?, cryptoState: 
 @Composable
 private fun ReceiveModal(coin: CoinMarketData, wallet: CryptoWallet?, onClose: () -> Unit) {
     val darkMode = LocalDarkMode.current
+    val brand = LocalBrandColor.current
     val address = wallet?.address ?: "Adresse non disponible"
     val qrBitmap = remember(address) { generateQrBitmap(address, 400) }
 
@@ -1133,7 +1139,7 @@ private fun ReceiveModal(coin: CoinMarketData, wallet: CryptoWallet?, onClose: (
                 }
             } else {
                 Box(Modifier.size(220.dp), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = Accent)
+                    CircularProgressIndicator(color = brand)
                 }
             }
 
@@ -1282,7 +1288,7 @@ private fun CryptoQrScanDialog(
                             .fillMaxWidth()
                             .height(2.dp)
                             .offset(y = scanLineY.dp)
-                            .background(Accent)
+                            .background(Color.White)
                     )
                 }
 
