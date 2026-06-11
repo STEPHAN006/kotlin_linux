@@ -861,6 +861,11 @@ private fun QrReceiveScreen(state: BankUiState, onBack: () -> Unit, onGenerate: 
 
 @Composable
 private fun PayQrScreen(state: BankUiState, onConfirm: (Double) -> Unit, onBack: () -> Unit) {
+    val darkMode   = LocalDarkMode.current
+    val pageBg     = if (darkMode) BgBase     else PageBg
+    val ink        = if (darkMode) TextPrimary else Ink
+    val cardBg     = if (darkMode) BgSurface   else Color(0xFFF7F8FA)
+    val border     = if (darkMode) BgSurfaceTop else Line
     val scanResult = state.qrScanResult
     var amount by remember(scanResult?.suggestedAmount) {
         mutableStateOf(scanResult?.suggestedAmount?.let {
@@ -871,14 +876,14 @@ private fun PayQrScreen(state: BankUiState, onConfirm: (Double) -> Unit, onBack:
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(PageBg)
+            .background(pageBg)
             .statusBarsPadding()
             .padding(24.dp)
     ) {
-        IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = Ink) }
+        IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = ink) }
 
         Spacer(Modifier.height(24.dp))
-        Text("Payer par QR", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Ink)
+        Text("Payer par QR", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = ink)
         Spacer(Modifier.height(24.dp))
 
         // Recipient card
@@ -886,7 +891,7 @@ private fun PayQrScreen(state: BankUiState, onConfirm: (Double) -> Unit, onBack:
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(16.dp))
-                .background(Color(0xFFF7F8FA))
+                .background(cardBg)
                 .padding(16.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -908,7 +913,7 @@ private fun PayQrScreen(state: BankUiState, onConfirm: (Double) -> Unit, onBack:
                 Column {
                     Text(
                         text = scanResult?.recipientName ?: "Destinataire inconnu",
-                        color = Ink,
+                        color = ink,
                         fontSize = 17.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -919,24 +924,26 @@ private fun PayQrScreen(state: BankUiState, onConfirm: (Double) -> Unit, onBack:
                     )
                 }
                 Spacer(Modifier.weight(1f))
-                Icon(Icons.Default.Person, null, tint = Color(0xFF4CAF50), modifier = Modifier.size(22.dp))
+                Icon(Icons.Default.Person, null, tint = SemanticSuccess, modifier = Modifier.size(22.dp))
             }
         }
 
         Spacer(Modifier.height(32.dp))
-        Text("Montant à envoyer", color = Ink, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+        Text("Montant à envoyer", color = ink, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
         Spacer(Modifier.height(12.dp))
         OutlinedTextField(
             value = amount,
             onValueChange = { amount = it.filter { c -> c.isDigit() || c == '.' } },
             modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("0") },
-            suffix = { Text("MGA") },
+            placeholder = { Text("0", color = Muted) },
+            suffix = { Text("MGA", color = Muted) },
             shape = RoundedCornerShape(16.dp),
             singleLine = true,
             colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = ink,
+                unfocusedTextColor = ink,
                 focusedBorderColor = BrandPrimary,
-                unfocusedBorderColor = Color(0xFFE6E8EC)
+                unfocusedBorderColor = border
             )
         )
 

@@ -29,12 +29,12 @@ import com.stephan.mobil.ui.theme.*
 import com.stephan.mobil.ui.viewmodel.BankUiState
 import com.stephan.mobil.ui.viewmodel.BankViewModel
 
-private val PageBg     = Color(0xFFF5F6FA)
-private val CardBg     = Color.White
-private val Ink        = Color(0xFF17181C)
-private val MutedInk   = Color(0xFF8B8F98)
-private val BorderLine = Color(0xFFECEEF2)
-private val AccentRed  = Color(0xFFE53935)
+private val LightPageBg   = Color(0xFFF5F6FA)
+private val LightCardBg   = Color.White
+private val LightInk      = Color(0xFF17181C)
+private val SharedMuted   = Color(0xFF8B8F98)
+private val LightBorder   = Color(0xFFECEEF2)
+private val WarnAmber     = Color(0xFFF57C00)
 
 @Composable
 fun WithdrawScreen(
@@ -66,6 +66,13 @@ private fun WithdrawFormScreen(
     vm: BankViewModel,
     onBack: () -> Unit
 ) {
+    val darkMode   = LocalDarkMode.current
+    val pageBg     = if (darkMode) BgBase       else LightPageBg
+    val cardBg     = if (darkMode) BgSurface    else LightCardBg
+    val ink        = if (darkMode) TextPrimary  else LightInk
+    val muted      = SharedMuted
+    val border     = if (darkMode) BgSurfaceTop else LightBorder
+    val warnBg     = if (darkMode) Color(0xFF2A1F00) else Color(0xFFFFF8E1)
     val accounts      = state.balance.accounts
     val beneficiaries = state.beneficiaries
     var mode          by remember { mutableStateOf(WithdrawMode.SIMPLE) }
@@ -81,22 +88,22 @@ private fun WithdrawFormScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(PageBg)
+            .background(pageBg)
     ) {
         // Top bar
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .fillMaxWidth()
-                .background(CardBg)
+                .background(cardBg)
                 .padding(horizontal = 8.dp, vertical = 10.dp)
         ) {
             IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = Ink)
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = ink)
             }
             Column {
-                Text("Retrait", color = Ink, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                Text("Vers un bénéficiaire", color = MutedInk, fontSize = 12.sp)
+                Text("Retrait", color = ink, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Text("Vers un bénéficiaire", color = muted, fontSize = 12.sp)
             }
         }
 
@@ -114,8 +121,8 @@ private fun WithdrawFormScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(14.dp))
-                            .background(CardBg)
-                            .border(1.dp, BorderLine, RoundedCornerShape(14.dp))
+                            .background(cardBg)
+                            .border(1.dp, border, RoundedCornerShape(14.dp))
                             .padding(16.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
@@ -131,10 +138,10 @@ private fun WithdrawFormScreen(
                                 Icon(Icons.Default.AccountBalance, null, tint = BrandPrimary, modifier = Modifier.size(20.dp))
                             }
                             Column {
-                                Text("Solde disponible", color = MutedInk, fontSize = 12.sp)
+                                Text("Solde disponible", color = muted, fontSize = 12.sp)
                                 Text(
                                     "%,.0f MGA".format(accounts.first().balance).replace(",", " "),
-                                    color = Ink,
+                                    color = ink,
                                     fontSize = 16.sp,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -158,7 +165,7 @@ private fun WithdrawFormScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(12.dp))
-                        .background(BorderLine)
+                        .background(border)
                         .padding(4.dp),
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
@@ -169,7 +176,7 @@ private fun WithdrawFormScreen(
                             modifier = Modifier
                                 .weight(1f)
                                 .clip(RoundedCornerShape(10.dp))
-                                .background(if (active) CardBg else Color.Transparent)
+                                .background(if (active) cardBg else Color.Transparent)
                                 .clickable { mode = m }
                                 .padding(vertical = 10.dp)
                         ) {
@@ -180,12 +187,12 @@ private fun WithdrawFormScreen(
                                 Icon(
                                     imageVector = if (m == WithdrawMode.SIMPLE) Icons.Default.ArrowDownward else Icons.Default.Repeat,
                                     contentDescription = null,
-                                    tint = if (active) AccentRed else MutedInk,
+                                    tint = if (active) BrandPrimary else muted,
                                     modifier = Modifier.size(16.dp)
                                 )
                                 Text(
                                     text = if (m == WithdrawMode.SIMPLE) "Retrait simple" else "Automatique",
-                                    color = if (active) Ink else MutedInk,
+                                    color = if (active) ink else muted,
                                     fontSize = 13.sp,
                                     fontWeight = if (active) FontWeight.SemiBold else FontWeight.Normal
                                 )
@@ -200,15 +207,15 @@ private fun WithdrawFormScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(10.dp))
-                            .background(Color(0xFFFFF8E1))
+                            .background(warnBg)
                             .padding(10.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.Default.Info, null, tint = Color(0xFFF57C00), modifier = Modifier.size(16.dp))
+                        Icon(Icons.Default.Info, null, tint = WarnAmber, modifier = Modifier.size(16.dp))
                         Text(
                             "Le retrait sera effectué automatiquement tous les $freqDays jour(s).",
-                            color = Color(0xFFF57C00),
+                            color = WarnAmber,
                             fontSize = 12.sp,
                             lineHeight = 16.sp
                         )
@@ -219,7 +226,7 @@ private fun WithdrawFormScreen(
             // Fréquence (mode AUTO seulement)
             if (mode == WithdrawMode.AUTO) {
                 item {
-                    Text("Fréquence", color = Ink, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                    Text("Fréquence", color = ink, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                     Spacer(Modifier.height(10.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         listOf(1 to "Chaque jour", 7 to "Chaque semaine", 14 to "2 semaines", 30 to "Chaque mois").forEach { (days, label) ->
@@ -228,7 +235,7 @@ private fun WithdrawFormScreen(
                                 onClick  = { freqDays = days },
                                 label    = { Text(label, fontSize = 12.sp) },
                                 colors   = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = AccentRed,
+                                    selectedContainerColor = BrandPrimary,
                                     selectedLabelColor     = Color.White
                                 )
                             )
@@ -239,7 +246,7 @@ private fun WithdrawFormScreen(
 
             // Bénéficiaires
             item {
-                Text("Bénéficiaire", color = Ink, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                Text("Bénéficiaire", color = ink, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.height(10.dp))
                 if (beneficiaries.isEmpty()) {
                     Box(
@@ -247,13 +254,13 @@ private fun WithdrawFormScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(14.dp))
-                            .background(CardBg)
-                            .border(1.dp, BorderLine, RoundedCornerShape(14.dp))
+                            .background(cardBg)
+                            .border(1.dp, border, RoundedCornerShape(14.dp))
                             .padding(24.dp)
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Icon(Icons.Default.PersonOff, null, tint = MutedInk, modifier = Modifier.size(32.dp))
-                            Text("Aucun bénéficiaire enregistré", color = MutedInk, fontSize = 13.sp, textAlign = TextAlign.Center)
+                            Icon(Icons.Default.PersonOff, null, tint = muted, modifier = Modifier.size(32.dp))
+                            Text("Aucun bénéficiaire enregistré", color = muted, fontSize = 13.sp, textAlign = TextAlign.Center)
                         }
                     }
                 } else {
@@ -266,10 +273,10 @@ private fun WithdrawFormScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clip(RoundedCornerShape(14.dp))
-                                    .background(if (selected) BrandPrimary.copy(alpha = 0.06f) else CardBg)
+                                    .background(if (selected) BrandPrimary.copy(alpha = 0.06f) else cardBg)
                                     .border(
                                         if (selected) 1.5.dp else 1.dp,
-                                        if (selected) BrandPrimary else BorderLine,
+                                        if (selected) BrandPrimary else border,
                                         RoundedCornerShape(14.dp)
                                     )
                                     .clickable { selectedBenef = benef }
@@ -290,14 +297,14 @@ private fun WithdrawFormScreen(
                                     )
                                 }
                                 Column(modifier = Modifier.weight(1f)) {
-                                    Text(benef.name, color = Ink, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-                                    Text(benef.bankName, color = MutedInk, fontSize = 12.sp)
-                                    Text(benef.accountNumberMasked, color = MutedInk, fontSize = 11.sp)
+                                    Text(benef.name, color = ink, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                                    Text(benef.bankName, color = muted, fontSize = 12.sp)
+                                    Text(benef.accountNumberMasked, color = muted, fontSize = 11.sp)
                                 }
                                 if (selected) {
                                     Icon(Icons.Default.CheckCircle, null, tint = BrandPrimary, modifier = Modifier.size(22.dp))
                                 } else {
-                                    Icon(Icons.Default.RadioButtonUnchecked, null, tint = BorderLine, modifier = Modifier.size(22.dp))
+                                    Icon(Icons.Default.RadioButtonUnchecked, null, tint = border, modifier = Modifier.size(22.dp))
                                 }
                             }
                         }
@@ -307,24 +314,24 @@ private fun WithdrawFormScreen(
 
             // Montant
             item {
-                Text("Montant (MGA)", color = Ink, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                Text("Montant (MGA)", color = ink, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.height(10.dp))
                 OutlinedTextField(
                     value = amountText,
                     onValueChange = { amountText = it.filter { c -> c.isDigit() } },
-                    placeholder = { Text("Ex : 50 000", color = MutedInk) },
-                    leadingIcon = { Icon(Icons.Default.AttachMoney, null, tint = MutedInk) },
+                    placeholder = { Text("Ex : 50 000", color = muted) },
+                    leadingIcon = { Icon(Icons.Default.AttachMoney, null, tint = muted) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     shape = RoundedCornerShape(12.dp),
                     singleLine = true,
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor   = BrandPrimary,
-                        unfocusedBorderColor = BorderLine,
-                        focusedTextColor     = Ink,
-                        unfocusedTextColor   = Ink,
+                        unfocusedBorderColor = border,
+                        focusedTextColor     = ink,
+                        unfocusedTextColor   = ink,
                         cursorColor          = BrandPrimary,
-                        focusedContainerColor   = CardBg,
-                        unfocusedContainerColor = CardBg
+                        focusedContainerColor   = cardBg,
+                        unfocusedContainerColor = cardBg
                     ),
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -332,7 +339,7 @@ private fun WithdrawFormScreen(
                     Spacer(Modifier.height(6.dp))
                     Text(
                         "%,.0f MGA".format(amount).replace(",", " "),
-                        color = AccentRed,
+                        color = BrandPrimary,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -355,23 +362,23 @@ private fun WithdrawFormScreen(
 
             // Note optionnelle
             item {
-                Text("Note (optionnelle)", color = Ink, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                Text("Note (optionnelle)", color = ink, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.height(10.dp))
                 OutlinedTextField(
                     value = noteText,
                     onValueChange = { noteText = it },
-                    placeholder = { Text("Ex : remboursement, loyer…", color = MutedInk) },
-                    leadingIcon = { Icon(Icons.Default.Edit, null, tint = MutedInk) },
+                    placeholder = { Text("Ex : remboursement, loyer…", color = muted) },
+                    leadingIcon = { Icon(Icons.Default.Edit, null, tint = muted) },
                     shape = RoundedCornerShape(12.dp),
                     singleLine = true,
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor   = BrandPrimary,
-                        unfocusedBorderColor = BorderLine,
-                        focusedTextColor     = Ink,
-                        unfocusedTextColor   = Ink,
+                        unfocusedBorderColor = border,
+                        focusedTextColor     = ink,
+                        unfocusedTextColor   = ink,
                         cursorColor          = BrandPrimary,
-                        focusedContainerColor   = CardBg,
-                        unfocusedContainerColor = CardBg
+                        focusedContainerColor   = cardBg,
+                        unfocusedContainerColor = cardBg
                     ),
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -401,13 +408,13 @@ private fun WithdrawFormScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(14.dp))
-                            .background(CardBg)
-                            .border(1.dp, BorderLine, RoundedCornerShape(14.dp))
+                            .background(cardBg)
+                            .border(1.dp, border, RoundedCornerShape(14.dp))
                             .padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Text("Récapitulatif", color = Ink, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                        HorizontalDivider(color = BorderLine)
+                        Text("Récapitulatif", color = ink, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                        HorizontalDivider(color = border)
                         SummaryRow("Bénéficiaire", selectedBenef!!.name)
                         SummaryRow("Banque", selectedBenef!!.bankName)
                         SummaryRow("Compte", selectedBenef!!.accountNumberMasked)
@@ -422,11 +429,11 @@ private fun WithdrawFormScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clip(RoundedCornerShape(8.dp))
-                                    .background(Color(0xFFFFF3E0))
+                                    .background(warnBg)
                                     .padding(10.dp)
                             ) {
-                                Icon(Icons.Default.Warning, null, tint = Color(0xFFF57C00), modifier = Modifier.size(16.dp))
-                                Text("Un OTP sera envoyé par email", color = Color(0xFFF57C00), fontSize = 12.sp)
+                                Icon(Icons.Default.Warning, null, tint = WarnAmber, modifier = Modifier.size(16.dp))
+                                Text("Un OTP sera envoyé par email", color = WarnAmber, fontSize = 12.sp)
                             }
                         }
                     }
@@ -455,7 +462,7 @@ private fun WithdrawFormScreen(
                     },
                     enabled  = canSubmit,
                     shape    = RoundedCornerShape(14.dp),
-                    colors   = ButtonDefaults.buttonColors(containerColor = AccentRed),
+                    colors   = ButtonDefaults.buttonColors(containerColor = BrandPrimary),
                     modifier = Modifier.fillMaxWidth().height(54.dp)
                 ) {
                     if (state.loading) {
@@ -485,8 +492,8 @@ private fun WithdrawFormScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Retraits programmés", color = Ink, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-                        Text("${state.scheduledWithdrawals.size}", color = MutedInk, fontSize = 12.sp)
+                        Text("Retraits programmés", color = ink, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                        Text("${state.scheduledWithdrawals.size}", color = muted, fontSize = 12.sp)
                     }
                 }
                 items(state.scheduledWithdrawals) { sw ->
@@ -499,6 +506,11 @@ private fun WithdrawFormScreen(
 
 @Composable
 private fun ScheduledWithdrawalCard(sw: ScheduledWithdrawal, vm: BankViewModel) {
+    val darkMode = LocalDarkMode.current
+    val cardBg   = if (darkMode) BgSurface    else LightCardBg
+    val ink      = if (darkMode) TextPrimary  else LightInk
+    val muted    = SharedMuted
+    val border   = if (darkMode) BgSurfaceTop else LightBorder
     var showDelete by remember { mutableStateOf(false) }
 
     Row(
@@ -507,8 +519,8 @@ private fun ScheduledWithdrawalCard(sw: ScheduledWithdrawal, vm: BankViewModel) 
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
-            .background(CardBg)
-            .border(1.dp, if (sw.isActive) BorderLine else BorderLine.copy(alpha = 0.5f), RoundedCornerShape(14.dp))
+            .background(cardBg)
+            .border(1.dp, if (sw.isActive) border else border.copy(alpha = 0.5f), RoundedCornerShape(14.dp))
             .padding(14.dp)
     ) {
         Box(
@@ -516,12 +528,12 @@ private fun ScheduledWithdrawalCard(sw: ScheduledWithdrawal, vm: BankViewModel) 
             modifier = Modifier
                 .size(44.dp)
                 .clip(CircleShape)
-                .background((if (sw.isActive) AccentRed else MutedInk).copy(alpha = 0.12f))
+                .background((if (sw.isActive) BrandPrimary else muted).copy(alpha = 0.12f))
         ) {
             Icon(
                 Icons.Default.Repeat,
                 null,
-                tint = if (sw.isActive) AccentRed else MutedInk,
+                tint = if (sw.isActive) BrandPrimary else muted,
                 modifier = Modifier.size(22.dp)
             )
         }
@@ -529,19 +541,19 @@ private fun ScheduledWithdrawalCard(sw: ScheduledWithdrawal, vm: BankViewModel) 
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
                 sw.beneficiary?.name ?: "—",
-                color = if (sw.isActive) Ink else MutedInk,
+                color = if (sw.isActive) ink else muted,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold
             )
             Text(
                 "%,.0f MGA · %s".format(sw.amount, freqLabel(sw.frequencyDays)).replace(",", " "),
-                color = MutedInk,
+                color = muted,
                 fontSize = 12.sp
             )
             if (sw.nextRunAt != null) {
                 Text(
                     "Prochain : ${sw.nextRunAt.take(10)}",
-                    color = MutedInk,
+                    color = muted,
                     fontSize = 11.sp
                 )
             }
@@ -553,9 +565,9 @@ private fun ScheduledWithdrawalCard(sw: ScheduledWithdrawal, vm: BankViewModel) 
                 onCheckedChange = { vm.toggleScheduledWithdrawal(sw.id) },
                 colors = SwitchDefaults.colors(
                     checkedThumbColor  = Color.White,
-                    checkedTrackColor  = AccentRed,
+                    checkedTrackColor  = BrandPrimary,
                     uncheckedThumbColor = Color.White,
-                    uncheckedTrackColor = MutedInk.copy(alpha = 0.4f)
+                    uncheckedTrackColor = muted.copy(alpha = 0.4f)
                 ),
                 modifier = Modifier.size(width = 46.dp, height = 26.dp)
             )
@@ -563,7 +575,7 @@ private fun ScheduledWithdrawalCard(sw: ScheduledWithdrawal, vm: BankViewModel) 
                 onClick = { showDelete = true },
                 modifier = Modifier.size(24.dp)
             ) {
-                Icon(Icons.Default.DeleteOutline, null, tint = MutedInk, modifier = Modifier.size(18.dp))
+                Icon(Icons.Default.DeleteOutline, null, tint = muted, modifier = Modifier.size(18.dp))
             }
         }
     }
@@ -575,7 +587,7 @@ private fun ScheduledWithdrawalCard(sw: ScheduledWithdrawal, vm: BankViewModel) 
             text = { Text("Le retrait automatique vers ${sw.beneficiary?.name} sera supprimé.") },
             confirmButton = {
                 TextButton(onClick = { vm.deleteScheduledWithdrawal(sw.id); showDelete = false }) {
-                    Text("Supprimer", color = AccentRed)
+                    Text("Supprimer", color = BrandPrimary)
                 }
             },
             dismissButton = {
@@ -587,11 +599,15 @@ private fun ScheduledWithdrawalCard(sw: ScheduledWithdrawal, vm: BankViewModel) 
 
 @Composable
 private fun WithdrawSuccessScreen(message: String?, onDone: () -> Unit) {
+    val darkMode = LocalDarkMode.current
+    val pageBg   = if (darkMode) BgBase      else LightPageBg
+    val ink      = if (darkMode) TextPrimary else LightInk
+    val muted    = SharedMuted
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
             .fillMaxSize()
-            .background(PageBg)
+            .background(pageBg)
             .padding(32.dp)
     ) {
         Spacer(Modifier.weight(1f))
@@ -609,7 +625,7 @@ private fun WithdrawSuccessScreen(message: String?, onDone: () -> Unit) {
         Spacer(Modifier.height(28.dp))
         Text(
             if (message != null) "Retrait programmé !" else "Retrait effectué !",
-            color = Ink,
+            color = ink,
             fontSize = 26.sp,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center
@@ -617,7 +633,7 @@ private fun WithdrawSuccessScreen(message: String?, onDone: () -> Unit) {
         Spacer(Modifier.height(8.dp))
         Text(
             message ?: "Votre retrait a été traité avec succès.",
-            color = MutedInk,
+            color = muted,
             fontSize = 14.sp,
             textAlign = TextAlign.Center,
             lineHeight = 20.sp
@@ -638,9 +654,12 @@ private fun WithdrawSuccessScreen(message: String?, onDone: () -> Unit) {
 
 @Composable
 private fun SummaryRow(label: String, value: String) {
+    val darkMode = LocalDarkMode.current
+    val ink      = if (darkMode) TextPrimary else LightInk
+    val muted    = SharedMuted
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(label, color = MutedInk, fontSize = 13.sp)
-        Text(value, color = Ink, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+        Text(label, color = muted, fontSize = 13.sp)
+        Text(value, color = ink, fontSize = 13.sp, fontWeight = FontWeight.Medium)
     }
 }
 
