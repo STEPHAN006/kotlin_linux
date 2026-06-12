@@ -10,6 +10,9 @@ use App\Services\AuthService;
 use App\Services\AccountService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
@@ -94,6 +97,107 @@ class AuthController extends Controller
         return response()->json([
             'success' => true,
             'data' => new UserResource($user),
+        ]);
+    }
+
+    /**
+     * Save the device FCM token for push notifications.
+     *
+     * POST /api/fcm-token
+     */
+    public function updateFcmToken(Request $request): JsonResponse
+    {
+        $request->validate(['token' => ['required', 'string', 'max:255']]);
+        $request->user()->update(['fcm_token' => $request->token]);
+
+        return response()->json(['success' => true, 'message' => 'Token FCM enregistré.']);
+    }
+
+    /**
+     * Update the authenticated user's profile (requires current password).
+     *
+     * PUT /api/profile
+     */
+    public function updateProfile(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'current_password' => ['required', 'string'],
+            'name'             => ['sometimes', 'string', 'max:255'],
+            'email'            => ['sometimes', 'string', 'email', 'max:255',
+                                   'unique:users,email,' . $request->user()->id],
+            'phone'            => ['sometimes', 'nullable', 'string', 'max:20',
+                                   'unique:users,phone,' . $request->user()->id],
+        ]);
+
+        $user = $request->user();
+
+        if (!Hash::check($validated['current_password'], $user->password)) {
+            throw ValidationException::withMessages([
+                'current_password' => 'Mot de passe actuel incorrect.',
+            ]);
+        }
+
+        $update = collect($validated)->except('current_password')->filter()->toArray();
+        $user->update($update);
+
+        // If email changed, mark as unverified and resend verification
+        if (isset($update['email'])) {
+            $user->update(['email_verified_at' => null]);
+            $user->sendEmailVerificationNotification();
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Profil mis à jour.',
+            'data'    => new UserResource($user->fresh()),
+        ]);
+    }
+
+    /**
+     * Resend the email verification notification.
+     *
+     * POST /api/email/resend
+     */
+    public function resendVerification(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        if ($user->hasVerifiedEmail()) {
+            return response()->json(['success' => true, 'message' => 'Email déjà vérifié.']);
+        }
+
+        $user->sendEmailVerificationNotification();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Email de vérification envoyé.',
+        ]);
+    }
+
+    /**
+     * Upload or replace the authenticated user's avatar.
+     *
+     * POST /api/profile/avatar
+     */
+    public function uploadAvatar(Request $request): JsonResponse
+    {
+        $request->validate([
+            'avatar' => ['required', 'image', 'mimes:jpeg,png,jpg,webp', 'max:10240'],
+        ]);
+
+        $user = $request->user();
+
+        if ($user->avatar) {
+            Storage::disk('public')->delete($user->avatar);
+        }
+
+        $path = $request->file('avatar')->store('avatars', 'public');
+        $user->update(['avatar' => $path]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Photo de profil mise à jour.',
+            'data' => ['avatar_url' => $user->avatar_url],
         ]);
     }
 }

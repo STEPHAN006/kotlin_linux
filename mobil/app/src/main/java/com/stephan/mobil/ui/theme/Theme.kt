@@ -1,58 +1,88 @@
 package com.stephan.mobil.ui.theme
 
 import android.app.Activity
-import android.os.Build
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
 
-private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80
+val LocalDarkMode = staticCompositionLocalOf { false }
+val LocalBrandColor = staticCompositionLocalOf { BrandPrimary }
+
+private val SCpayDarkColorScheme = darkColorScheme(
+    primary                = BrandPrimary,
+    onPrimary              = BrandOnPrimary,
+    primaryContainer       = BrandPrimaryDark,
+    onPrimaryContainer     = TextOnPrimary,
+    secondary              = TextSecondary,
+    onSecondary            = TextPrimary,
+    secondaryContainer     = BgSurfaceHigh,
+    onSecondaryContainer   = TextPrimary,
+    background             = BgBase,
+    onBackground           = TextPrimary,
+    surface                = BgSurface,
+    onSurface              = TextPrimary,
+    surfaceVariant         = BgSurfaceElevated,
+    onSurfaceVariant       = TextSecondary,
+    error                  = SemanticDanger,
+    onError                = TextOnPrimary,
+    outline                = BgSurfaceTop,
 )
 
-private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40
-
-    /* Other default colors to override
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
-    onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-    */
+private val SCpayLightColorScheme = lightColorScheme(
+    primary                = BrandPrimary,
+    onPrimary              = BrandOnPrimary,
+    primaryContainer       = BrandPrimaryLight,
+    onPrimaryContainer     = TextOnPrimary,
+    secondary              = Color(0xFF737780),
+    onSecondary            = Color(0xFF17181C),
+    secondaryContainer     = LineColor,
+    onSecondaryContainer   = Color(0xFF17181C),
+    background             = Color.White,
+    onBackground           = Color(0xFF17181C),
+    surface                = SoftBackground,
+    onSurface              = Color(0xFF17181C),
+    surfaceVariant         = LightBackground,
+    onSurfaceVariant       = Color(0xFF737780),
+    error                  = SemanticDanger,
+    onError                = TextOnPrimary,
+    outline                = Color(0xFFE5E7EB),
 )
 
 @Composable
 fun MobilTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
+    darkTheme: Boolean = false,
     content: @Composable () -> Unit
 ) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+    val colorScheme = if (darkTheme) SCpayDarkColorScheme else SCpayLightColorScheme
+    val view = LocalView.current
+    if (!view.isInEditMode) {
+        SideEffect {
+            val window = (view.context as Activity).window
+            WindowCompat.setDecorFitsSystemWindows(window, false)
+            window.statusBarColor = android.graphics.Color.TRANSPARENT
+            window.navigationBarColor = android.graphics.Color.TRANSPARENT
+            WindowCompat.getInsetsController(window, view).apply {
+                isAppearanceLightStatusBars = !darkTheme
+                isAppearanceLightNavigationBars = !darkTheme
+            }
         }
-
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
     }
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = Typography,
-        content = content
-    )
+    CompositionLocalProvider(
+        LocalDarkMode provides darkTheme,
+        LocalBrandColor provides if (darkTheme) BrandPrimary else Color(0xFF17181C)
+    ) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = Typography,
+            content = content
+        )
+    }
 }

@@ -18,6 +18,9 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->statefulApi();
+        $middleware->alias([
+            'admin.web' => \App\Http\Middleware\AdminWebAuth::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         // Force JSON responses for API requests

@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SCpay — Historique</title>
+<link rel="stylesheet" href="scpay-design.css">
+<style>
+.filter-pill {
+  flex:1; padding:10px 0; text-align:center;
+  border-radius:var(--radius-sm); cursor:pointer;
+  font-size:13px; font-weight:700; color:var(--muted);
+  transition: all 0.2s;
+}
+.filter-pill.active { background:var(--surface-high); color:var(--magenta); border:1px solid rgba(255,0,122,0.3); }
+.chart-bar { height:10px; border-radius:5px; transition:width 0.6s ease; }
+.date-sep { font-size:12px; color:var(--muted); font-weight:600; padding:14px 0 6px; text-transform:uppercase; letter-spacing:0.5px; }
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="statusbar">
+    <span class="time">9:41</span>
+    <div class="icons">
+      <svg viewBox="0 0 24 24"><path d="M1 9l2 2c4.97-4.97 13.03-4.97 18 0l2-2C16.93 2.93 7.08 2.93 1 9zm8 8l3 3 3-3c-1.65-1.66-4.34-1.66-6 0zm-4-4l2 2c2.76-2.76 7.24-2.76 10 0l2-2C15.14 9.14 8.87 9.14 5 13z"/></svg>
+      <svg viewBox="0 0 24 24"><path d="M15.67 4H14V2h-4v2H8.33C7.6 4 7 4.6 7 5.33v15.33C7 21.4 7.6 22 8.33 22h7.33c.74 0 1.34-.6 1.34-1.33V5.33C17 4.6 16.4 4 15.67 4z"/></svg>
+    </div>
+  </div>
+
+  <div class="screen" style="padding:0 16px;">
+    <div style="display:flex;align-items:center;gap:10px;padding:16px 0 16px;">
+      <h1 class="h1" style="flex:1;">Historique</h1>
+      <button class="icon-btn">
+        <svg viewBox="0 0 24 24"><path d="M3 18h6v-2H3v2zM3 6v2h18V6H3zm0 7h12v-2H3v2z"/></svg>
+      </button>
+    </div>
+
+    <!-- Search -->
+    <div style="position:relative; margin-bottom:14px;">
+      <svg style="position:absolute;left:14px;top:50%;transform:translateY(-50%);width:18px;height:18px;fill:var(--muted);" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+      <input class="input-field" style="padding-left:42px;padding-right:42px;" type="text" placeholder="Rechercher une transaction...">
+      <button class="icon-btn" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);">
+        <svg viewBox="0 0 24 24"><path d="M3 17v2h6v-2H3zM3 5v2h10V5H3zm10 16v-2h8v-2h-8v-2h-2v6h2zM7 9v2H3v2h4v2h2V9H7zm14 4v-2H11v2h10zm-6-4h2V7h4V5h-4V3h-2v6z"/></svg>
+      </button>
+    </div>
+
+    <!-- Filters -->
+    <div style="display:flex;gap:8px;background:var(--surface);border-radius:var(--radius-sm);padding:4px;margin-bottom:16px;">
+      <div class="filter-pill active">Tous</div>
+      <div class="filter-pill">Entrées</div>
+      <div class="filter-pill">Sorties</div>
+    </div>
+
+    <!-- Spending Chart -->
+    <div class="card" style="margin-bottom:16px;">
+      <div style="display:flex;align-items:center;margin-bottom:14px;">
+        <span style="flex:1;font-family:'Hanken Grotesk',sans-serif;font-size:14px;font-weight:700;color:var(--white);">Dépenses par catégorie</span>
+        <svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:var(--muted);"><path d="M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z"/></svg>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div style="width:8px;height:8px;border-radius:2px;background:#ff007a;flex-shrink:0;"></div>
+          <span style="font-size:12px;color:var(--white);width:90px;">Shopping</span>
+          <div style="flex:1;height:10px;background:var(--surface-high);border-radius:5px;overflow:hidden;">
+            <div class="chart-bar" style="width:80%;background:#ff007a;"></div>
+          </div>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);width:80px;text-align:right;">120 000 MGA</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div style="width:8px;height:8px;border-radius:2px;background:#5B8DEF;flex-shrink:0;"></div>
+          <span style="font-size:12px;color:var(--white);width:90px;">Alimentation</span>
+          <div style="flex:1;height:10px;background:var(--surface-high);border-radius:5px;overflow:hidden;">
+            <div class="chart-bar" style="width:60%;background:#5B8DEF;"></div>
+          </div>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);width:80px;text-align:right;">90 000 MGA</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div style="width:8px;height:8px;border-radius:2px;background:#5DBB82;flex-shrink:0;"></div>
+          <span style="font-size:12px;color:var(--white);width:90px;">Transport</span>
+          <div style="flex:1;height:10px;background:var(--surface-high);border-radius:5px;overflow:hidden;">
+            <div class="chart-bar" style="width:40%;background:#5DBB82;"></div>
+          </div>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);width:80px;text-align:right;">60 000 MGA</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div style="width:8px;height:8px;border-radius:2px;background:#F4A428;flex-shrink:0;"></div>
+          <span style="font-size:12px;color:var(--white);width:90px;">Factures</span>
+          <div style="flex:1;height:10px;background:var(--surface-high);border-radius:5px;overflow:hidden;">
+            <div class="chart-bar" style="width:30%;background:#F4A428;"></div>
+          </div>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);width:80px;text-align:right;">45 000 MGA</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div style="width:8px;height:8px;border-radius:2px;background:#AB6FD8;flex-shrink:0;"></div>
+          <span style="font-size:12px;color:var(--white);width:90px;">Restauration</span>
+          <div style="flex:1;height:10px;background:var(--surface-high);border-radius:5px;overflow:hidden;">
+            <div class="chart-bar" style="width:20%;background:#AB6FD8;"></div>
+          </div>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);width:80px;text-align:right;">30 000 MGA</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Transaction list -->
+    <div class="date-sep">Aujourd'hui</div>
+    <div class="txn-row">
+      <div class="txn-icon" style="background:rgba(209,44,85,0.12);">
+        <svg viewBox="0 0 24 24" style="fill:var(--danger);"><path d="M20 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2z"/></svg>
+      </div>
+      <div class="txn-info"><div class="title">CLAUDE.AI SUBSCRIPTION</div><div class="sub">2026-04-15 · Abonnement</div></div>
+      <div class="txn-amount"><div class="val danger">-20,00 USD</div><div class="status danger">Refusé</div></div>
+    </div>
+    <div class="divider"></div>
+    <div class="txn-row">
+      <div class="txn-icon"><svg viewBox="0 0 24 24"><path d="M20 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2z"/></svg></div>
+      <div class="txn-info"><div class="title">Achat par carte</div><div class="sub">•• 1000 · Shopping</div></div>
+      <div class="txn-amount"><div class="val">-10,00 USD</div><div class="status success">Succès</div></div>
+    </div>
+
+    <div class="date-sep">Hier</div>
+    <div class="txn-row">
+      <div class="txn-icon" style="background:rgba(93,187,130,0.12);">
+        <svg viewBox="0 0 24 24" style="fill:var(--success);"><path d="M21 18v1c0 1.1-.9 2-2 2H5c-1.11 0-2-.9-2-2V5c0-1.1.89-2 2-2h14c1.1 0 2 .9 2 2v1h-9c-1.11 0-2 .9-2 2v8c0 1.1.89 2 2 2h9z"/></svg>
+      </div>
+      <div class="txn-info"><div class="title">Déposez des pièces</div><div class="sub">Wallet SCpay · Crypto</div></div>
+      <div class="txn-amount"><div class="val success">+50,00 USDT</div><div class="status success">Crédit</div></div>
+    </div>
+    <div class="divider"></div>
+    <div class="txn-row">
+      <div class="txn-icon" style="background:rgba(91,141,239,0.12);">
+        <svg viewBox="0 0 24 24" style="fill:var(--blue);"><path d="M6.99 11L3 15l3.99 4v-3H14v-2H6.99v-3zM21 9l-3.99-4v3H10v2h7.01v3L21 9z"/></svg>
+      </div>
+      <div class="txn-info"><div class="title">Virement reçu</div><div class="sub">2026-04-03 · Transfer</div></div>
+      <div class="txn-amount"><div class="val success">+150 000 MGA</div><div class="status success">Crédit</div></div>
+    </div>
+
+    <div class="date-sep">Cette semaine</div>
+    <div class="txn-row">
+      <div class="txn-icon" style="background:rgba(244,164,40,0.12);">
+        <svg viewBox="0 0 24 24" style="fill:var(--warning);"><path d="M15.55 13c.75 0 1.41-.41 1.75-1.03l3.58-6.49c.37-.66-.11-1.48-.87-1.48H5.21l-.94-2H1v2h2l3.6 7.59-1.35 2.44C4.52 15.37 5.48 17 7 17h12v-2H7l1.1-2h7.45zM6.16 6h12.15l-2.76 5H8.53L6.16 6zM7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zm10 0c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z"/></svg>
+      </div>
+      <div class="txn-info"><div class="title">Jumia Madagascar</div><div class="sub">2026-04-01 · Shopping</div></div>
+      <div class="txn-amount"><div class="val">-85 000 MGA</div><div class="status muted">Débit</div></div>
+    </div>
+    <div class="divider"></div>
+    <div class="txn-row">
+      <div class="txn-icon" style="background:rgba(171,111,216,0.12);">
+        <svg viewBox="0 0 24 24" style="fill:#AB6FD8;"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+      </div>
+      <div class="txn-info"><div class="title">Facture Orange</div><div class="sub">2026-03-31 · Factures</div></div>
+      <div class="txn-amount"><div class="val">-25 000 MGA</div><div class="status muted">Débit</div></div>
+    </div>
+
+    <div style="height:24px;"></div>
+  </div>
+
+  <nav class="bottom-nav">
+    <a class="nav-item" href="01-dashboard.html"><svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg><span>Accueil</span></a>
+    <a class="nav-item active" href="03-history.html"><svg viewBox="0 0 24 24"><path d="M7 2v11h3v9l7-12h-4l4-8z"/></svg><span>Historique</span></a>
+    <a class="nav-item" href="02-transfer.html"><svg viewBox="0 0 24 24"><path d="M6.99 11L3 15l3.99 4v-3H14v-2H6.99v-3zM21 9l-3.99-4v3H10v2h7.01v3L21 9z"/></svg><span>Virement</span></a>
+    <a class="nav-item" href="05-cards.html"><svg viewBox="0 0 24 24"><path d="M20 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg><span>Cartes</span></a>
+    <a class="nav-item" href="06-profile.html"><svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg><span>Profil</span></a>
+  </nav>
+</div>
+</body>
+</html>

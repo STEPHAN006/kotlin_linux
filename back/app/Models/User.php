@@ -5,11 +5,12 @@ namespace App\Models;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
-class User extends Authenticatable
+class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, HasApiTokens, Notifiable;
@@ -23,9 +24,18 @@ class User extends Authenticatable
         'name',
         'email',
         'phone',
+        'avatar',
         'password',
         'role',
         'is_active',
+        'kyc_status',
+        'cin_full_name',
+        'cin_recto',
+        'cin_verso',
+        'kyc_submitted_at',
+        'kyc_reviewed_at',
+        'kyc_rejection_reason',
+        'fcm_token',
     ];
 
     /**
@@ -49,12 +59,32 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_active' => 'boolean',
+            'kyc_submitted_at' => 'datetime',
+            'kyc_reviewed_at' => 'datetime',
         ];
     }
 
     /**
      * Check if the user is an admin.
      */
+    public function getAvatarUrlAttribute(): ?string
+    {
+        if (!$this->avatar) return null;
+        return url('storage/' . $this->avatar);
+    }
+
+    public function getCinRectoUrlAttribute(): ?string
+    {
+        if (!$this->cin_recto) return null;
+        return url('storage/' . $this->cin_recto);
+    }
+
+    public function getCinVersoUrlAttribute(): ?string
+    {
+        if (!$this->cin_verso) return null;
+        return url('storage/' . $this->cin_verso);
+    }
+
     public function isAdmin(): bool
     {
         return $this->role === 'admin';
