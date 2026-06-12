@@ -45,6 +45,7 @@ import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.AccountBalanceWallet
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.material.icons.filled.FlashOn
@@ -255,8 +256,9 @@ private fun HomeContent(
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold
                 )
+                val unreadNotifs = state.notifications.count { !it.read }
                 HeaderIcon(Icons.Default.QrCodeScanner, onScan)
-                HeaderIcon(Icons.Default.NotificationsNone, onNotifications)
+                HeaderIcon(Icons.Default.NotificationsNone, onNotifications, badgeCount = unreadNotifs)
                 HeaderIcon(Icons.Default.HeadsetMic, onSupport)
             }
         }
@@ -420,10 +422,18 @@ private fun HomeContent(
 }
 
 @Composable
-private fun HeaderIcon(icon: ImageVector, onClick: () -> Unit) {
+private fun HeaderIcon(icon: ImageVector, onClick: () -> Unit, badgeCount: Int = 0) {
     val darkMode = LocalDarkMode.current
     IconButton(onClick = onClick, modifier = Modifier.size(38.dp)) {
-        Icon(icon, contentDescription = null, tint = if (darkMode) TextPrimary else Ink, modifier = Modifier.size(25.dp))
+        if (badgeCount > 0) {
+            BadgedBox(badge = {
+                Badge { Text(if (badgeCount > 9) "9+" else badgeCount.toString(), fontSize = 9.sp) }
+            }) {
+                Icon(icon, contentDescription = null, tint = if (darkMode) TextPrimary else Ink, modifier = Modifier.size(25.dp))
+            }
+        } else {
+            Icon(icon, contentDescription = null, tint = if (darkMode) TextPrimary else Ink, modifier = Modifier.size(25.dp))
+        }
     }
 }
 
@@ -1340,11 +1350,13 @@ private fun SupportChatScreen(
 ) {
     var message by remember { mutableStateOf("") }
     var pendingImageUri by remember { mutableStateOf<Uri?>(null) }
+    var showCloseDialog by remember { mutableStateOf(false) }
     val darkMode = LocalDarkMode.current
     val brand = LocalBrandColor.current
     val bg = if (darkMode) BgBase else PageBg
     val headerBg = if (darkMode) BgSurface else Color.White
     val ink = if (darkMode) TextPrimary else Ink
+    val isClosed = supportState.supportTicket?.status == "closed"
 
     val imagePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -1358,12 +1370,31 @@ private fun SupportChatScreen(
         if (msgs.isNotEmpty()) listState.animateScrollToItem(msgs.size - 1)
     }
 
+    if (showCloseDialog) {
+        AlertDialog(
+            onDismissRequest = { showCloseDialog = false },
+            icon = { Icon(Icons.Default.Lock, null, tint = Color(0xFFE11D48)) },
+            title = { Text("Clôturer le ticket ?", fontWeight = FontWeight.Bold) },
+            text = { Text("Le ticket sera fermé. Vous pourrez ouvrir un nouveau ticket à tout moment.") },
+            confirmButton = {
+                Button(
+                    onClick = { showCloseDialog = false; supportVm.closeTicket() },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE11D48))
+                ) { Text("Clôturer", color = Color.White) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCloseDialog = false }) { Text("Annuler") }
+            }
+        )
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(bg)
             .statusBarsPadding()
     ) {
+        // Header
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1379,26 +1410,33 @@ private fun SupportChatScreen(
                 Text("SC", color = if (darkMode) BgBase else Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
             }
             Spacer(Modifier.width(10.dp))
-            Column {
+            Column(Modifier.weight(1f)) {
                 Text("Support SCpay", color = ink, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(6.dp).clip(CircleShape).background(Color(0xFF5DBB82)))
+                    Box(
+                        Modifier.size(6.dp).clip(CircleShape)
+                            .background(if (isClosed) Color(0xFFE11D48) else Color(0xFF5DBB82))
+                    )
                     Spacer(Modifier.width(4.dp))
-                    Text("En ligne · Répond en < 10 min", color = Muted, fontSize = 12.sp)
+                    Text(
+                        if (isClosed) "Ticket clôturé" else "En ligne · Répond en < 10 min",
+                        color = Muted, fontSize = 12.sp
+                    )
                 }
             }
-            Spacer(Modifier.weight(1f))
             if (supportState.supportLoading) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(20.dp),
-                    strokeWidth = 2.dp,
-                    color = brand
-                )
-                Spacer(Modifier.width(12.dp))
+                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = brand)
+                Spacer(Modifier.width(8.dp))
+            }
+            if (!isClosed && supportState.supportTicket != null) {
+                IconButton(onClick = { showCloseDialog = true }) {
+                    Icon(Icons.Default.Lock, null, tint = Color(0xFFE11D48), modifier = Modifier.size(20.dp))
+                }
             }
         }
         Divider(color = Line)
 
+        // Messages
         androidx.compose.foundation.lazy.LazyColumn(
             state = listState,
             modifier = Modifier.weight(1f).padding(horizontal = 16.dp, vertical = 12.dp),
@@ -1461,62 +1499,100 @@ private fun SupportChatScreen(
             }
         }
 
-        if (pendingImageUri != null) {
-            Row(
-                modifier = Modifier.fillMaxWidth().background(Soft)
-                    .padding(horizontal = 16.dp, vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically
+        // Closed state footer
+        if (isClosed) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(headerBg)
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Icon(Icons.Default.Image, null, tint = Color(0xFF5DBB82), modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text("Image sélectionnée", color = Color(0xFF5DBB82), fontSize = 13.sp, modifier = Modifier.weight(1f))
-                IconButton(onClick = { pendingImageUri = null }, modifier = Modifier.size(32.dp)) {
-                    Text("✕", color = Muted, fontSize = 14.sp)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color(0xFFE11D48).copy(alpha = if (darkMode) 0.15f else 0.08f))
+                        .padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Icon(Icons.Default.Lock, null, tint = Color(0xFFE11D48), modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Ce ticket est clôturé", color = Color(0xFFE11D48), fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                }
+                Spacer(Modifier.height(10.dp))
+                Button(
+                    onClick = { supportVm.startNewTicket() },
+                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                    shape = RoundedCornerShape(24.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = brand)
+                ) {
+                    Icon(Icons.Default.Add, null, tint = if (darkMode) BgBase else Color.White, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Nouveau ticket", color = if (darkMode) BgBase else Color.White, fontWeight = FontWeight.Bold)
                 }
             }
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth().background(headerBg)
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = { imagePicker.launch("image/*") }) {
-                Icon(
-                    Icons.Default.Image, null,
-                    tint = if (pendingImageUri != null) Color(0xFF5DBB82) else Muted
-                )
+        } else {
+            // Image preview bar
+            if (pendingImageUri != null) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().background(Soft)
+                        .padding(horizontal = 16.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.Image, null, tint = Color(0xFF5DBB82), modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Image sélectionnée", color = Color(0xFF5DBB82), fontSize = 13.sp, modifier = Modifier.weight(1f))
+                    IconButton(onClick = { pendingImageUri = null }, modifier = Modifier.size(32.dp)) {
+                        Text("✕", color = Muted, fontSize = 14.sp)
+                    }
+                }
             }
-            OutlinedTextField(
-                value = message,
-                onValueChange = { message = it },
-                placeholder = { Text("Message…", fontSize = 14.sp) },
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(24.dp),
-                maxLines = 3,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = brand,
-                    unfocusedBorderColor = Line
-                )
-            )
-            Spacer(Modifier.width(8.dp))
-            Box(
-                modifier = Modifier.size(44.dp).clip(CircleShape)
-                    .background(if (message.isNotBlank()) brand else Soft)
-                    .clickable {
-                        if (message.isNotBlank()) {
-                            supportVm.sendSupportMessage(message, pendingImageUri)
-                            message = ""
-                            pendingImageUri = null
-                        }
-                    },
-                contentAlignment = Alignment.Center
+
+            // Message input bar
+            Row(
+                modifier = Modifier.fillMaxWidth().background(headerBg)
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    Icons.AutoMirrored.Filled.Send, null,
-                    tint = if (message.isNotBlank()) Color.White else Muted,
-                    modifier = Modifier.size(20.dp)
+                IconButton(onClick = { imagePicker.launch("image/*") }) {
+                    Icon(
+                        Icons.Default.Image, null,
+                        tint = if (pendingImageUri != null) Color(0xFF5DBB82) else Muted
+                    )
+                }
+                OutlinedTextField(
+                    value = message,
+                    onValueChange = { message = it },
+                    placeholder = { Text("Message…", fontSize = 14.sp) },
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(24.dp),
+                    maxLines = 3,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = brand,
+                        unfocusedBorderColor = Line
+                    )
                 )
+                Spacer(Modifier.width(8.dp))
+                Box(
+                    modifier = Modifier.size(44.dp).clip(CircleShape)
+                        .background(if (message.isNotBlank()) brand else Soft)
+                        .clickable {
+                            if (message.isNotBlank()) {
+                                supportVm.sendSupportMessage(message, pendingImageUri)
+                                message = ""
+                                pendingImageUri = null
+                            }
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.Send, null,
+                        tint = if (message.isNotBlank()) Color.White else Muted,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             }
         }
     }

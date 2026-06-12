@@ -1,5 +1,6 @@
 package com.stephan.mobil.ui.screens
 
+import java.util.Locale
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -642,11 +643,14 @@ private fun SwapModal(
     var toSymbol     by remember { mutableStateOf("") }
     var fromAmount   by remember { mutableStateOf("") }
     var showPicker   by remember { mutableStateOf(false) }
+    var txState      by remember { mutableStateOf("form") }
+    var swapError    by remember { mutableStateOf("") }
 
     val cardBg      = if (darkMode) Color(0xFF1A1C23) else Color(0xFFF4F5F7)
     val ink         = if (darkMode) Color.White else Color(0xFF17181C)
     val line        = if (darkMode) Color(0xFF2A2D35) else Color(0xFFE5E7EB)
     val secondary   = if (darkMode) Color(0xFF0D0E12) else Color(0xFFECEEF2)
+    val swapPurple  = Color(0xFF8B5CF6)
 
     val fromCoin  = cryptoState.cryptoMarkets.find { it.symbol.uppercase() == fromSymbol }
     val toCoin    = cryptoState.cryptoMarkets.find { it.symbol.uppercase() == toSymbol }
@@ -657,10 +661,14 @@ private fun SwapModal(
         fromAmt * fromCoin.currentPrice / toCoin.currentPrice else 0.0
 
     ModalBottomSheet(
-        onDismissRequest = onClose,
+        onDismissRequest = { if (txState != "loading") onClose() },
         containerColor = cardBg,
         dragHandle = { BottomSheetDefaults.DragHandle(color = DetailMuted) }
     ) {
+        when (txState) {
+            "loading" -> ModalTxLoading(ink, "Swap en cours...")
+            "success" -> ModalTxSuccess(ink, swapPurple, "Swap effectué !", "$fromSymbol → $toSymbol") { onClose() }
+            else -> {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -691,7 +699,7 @@ private fun SwapModal(
                 OutlinedTextField(
                     value = fromAmount,
                     onValueChange = { v ->
-                        val f = v.filter { it.isDigit() || it == '.' }
+                        val f = v.replace(',', '.').filter { it.isDigit() || it == '.' }
                         if (f.count { it == '.' } <= 1) fromAmount = f
                     },
                     placeholder = { Text("0.00", color = DetailMuted) },
@@ -776,18 +784,28 @@ private fun SwapModal(
             Button(
                 onClick = {
                     if (fromAmt > 0 && toSymbol.isNotEmpty() && fromCoin != null && toCoin != null) {
-                        cryptoVm.swapCrypto(fromSymbol, fromAmt, fromCoin.currentPrice, toSymbol, toCoin.currentPrice)
-                        onClose()
+                        swapError = ""
+                        txState = "loading"
+                        cryptoVm.swapCrypto(fromSymbol, fromAmt, fromCoin.currentPrice, toSymbol, toCoin.currentPrice) { success ->
+                            txState = if (success) "success" else "form"
+                            if (!success) swapError = "Solde insuffisant ou erreur serveur."
+                        }
                     }
                 },
-                enabled = fromAmt > 0 && fromAmt <= fromBal && toSymbol.isNotEmpty(),
-                colors = ButtonDefaults.buttonColors(containerColor = brand),
+                enabled = fromAmt > 0 && toSymbol.isNotEmpty(),
+                colors = ButtonDefaults.buttonColors(containerColor = swapPurple),
                 modifier = Modifier.fillMaxWidth().height(50.dp)
             ) {
                 Text("Confirmer le swap", color = Color.White, fontWeight = FontWeight.Bold)
             }
+            if (swapError.isNotBlank()) {
+                Spacer(Modifier.height(8.dp))
+                Text(swapError, color = Color(0xFFEF4444), fontSize = 13.sp, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+            }
         }
-    }
+        } // else
+        } // when
+    } // ModalBottomSheet
 
     // Coin picker sheet
     if (showPicker) {
@@ -837,71 +855,73 @@ private fun BuyModal(coin: CoinMarketData, cryptoState: CryptoUiState, bankState
     val darkMode = LocalDarkMode.current
     val brand = LocalBrandColor.current
     var amountMga by remember { mutableStateOf("") }
+    var txState by remember { mutableStateOf("form") } // "form" | "loading" | "success"
     val price = coin.currentPrice
     val mga = cryptoState.mgaPerUsd
     val cryptoQty = if (amountMga.toDoubleOrNull() != null && amountMga.toDouble() > 0)
         amountMga.toDouble() / (price * mga) else 0.0
     val totalBalance = bankState.balance.totalBalance
 
-    val bg = if (darkMode) Color(0xFF0D0E12) else Color.White
     val cardBg = if (darkMode) Color(0xFF1A1C23) else Color(0xFFF4F5F7)
     val ink = if (darkMode) Color.White else Color(0xFF17181C)
     val line = if (darkMode) Color(0xFF2A2D35) else Color(0xFFE5E7EB)
     val secondaryBg = if (darkMode) Color(0xFF0D0E12) else Color(0xFFECEEF2)
 
     ModalBottomSheet(
-        onDismissRequest = onClose,
+        onDismissRequest = { if (txState != "loading") onClose() },
         containerColor = cardBg,
         dragHandle = { BottomSheetDefaults.DragHandle(color = DetailMuted) }
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp)
-                .verticalScroll(rememberScrollState())
-        ) {
-            Text("Acheter ${coin.symbol.uppercase()}", color = ink, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(8.dp))
-            Text("Prix : ${"%.2f".format(price)} USD · Solde : %,.0f MGA".format(totalBalance).replace(",", " "), color = DetailMuted, fontSize = 13.sp)
-            Spacer(Modifier.height(20.dp))
-
-            OutlinedTextField(
-                value = amountMga,
-                onValueChange = { amountMga = it.filter { c -> c.isDigit() || c == '.' } },
-                label = { Text("Montant en MGA", color = DetailMuted) },
-                suffix = { Text("MGA", color = DetailMuted) },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedTextColor = ink, unfocusedTextColor = ink,
-                    focusedBorderColor = brand, unfocusedBorderColor = line
-                ),
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            if (cryptoQty > 0) {
-                Spacer(Modifier.height(12.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(secondaryBg).padding(14.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text("Vous recevrez", color = DetailMuted, fontSize = 13.sp)
-                    Text(formatCryptoQty(cryptoQty) + " ${coin.symbol.uppercase()}", color = ink, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-                }
-            }
-
-            Spacer(Modifier.height(20.dp))
-            Button(
-                onClick = {
-                    amountMga.toDoubleOrNull()?.let { cryptoVm.buyCrypto(coin.symbol.uppercase(), it, price) }
-                    onClose()
-                },
-                enabled = (amountMga.toDoubleOrNull() ?: 0.0) > 0,
-                colors = ButtonDefaults.buttonColors(containerColor = brand),
-                modifier = Modifier.fillMaxWidth().height(50.dp)
+        when (txState) {
+            "loading" -> ModalTxLoading(ink, "Achat en cours...")
+            "success" -> ModalTxSuccess(ink, brand, "Achat réussi !", "${formatCryptoQty(cryptoQty)} ${coin.symbol.uppercase()} reçu") { onClose() }
+            else -> Column(
+                modifier = Modifier.fillMaxWidth().padding(20.dp).verticalScroll(rememberScrollState())
             ) {
-                Text("Confirmer l'achat", color = Color.White, fontWeight = FontWeight.Bold)
+                Text("Acheter ${coin.symbol.uppercase()}", color = ink, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(8.dp))
+                Text("Prix : ${"%.2f".format(price)} USD · Solde : %,.0f MGA".format(totalBalance).replace(",", " "), color = DetailMuted, fontSize = 13.sp)
+                Spacer(Modifier.height(20.dp))
+                OutlinedTextField(
+                    value = amountMga,
+                    onValueChange = { amountMga = it.replace(',', '.').filter { c -> c.isDigit() || c == '.' } },
+                    label = { Text("Montant en MGA", color = DetailMuted) },
+                    suffix = { Text("MGA", color = DetailMuted) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = ink, unfocusedTextColor = ink,
+                        focusedBorderColor = brand, unfocusedBorderColor = line
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                if (cryptoQty > 0) {
+                    Spacer(Modifier.height(12.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(secondaryBg).padding(14.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("Vous recevrez", color = DetailMuted, fontSize = 13.sp)
+                        Text(formatCryptoQty(cryptoQty) + " ${coin.symbol.uppercase()}", color = ink, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+                Spacer(Modifier.height(20.dp))
+                Button(
+                    onClick = {
+                        amountMga.toDoubleOrNull()?.let { amt ->
+                            txState = "loading"
+                            cryptoVm.buyCrypto(coin.symbol.uppercase(), amt, price) { success ->
+                                txState = if (success) "success" else "form"
+                            }
+                        }
+                    },
+                    enabled = (amountMga.toDoubleOrNull() ?: 0.0) > 0,
+                    colors = ButtonDefaults.buttonColors(containerColor = brand),
+                    modifier = Modifier.fillMaxWidth().height(50.dp)
+                ) {
+                    Text("Confirmer l'achat", color = Color(0xFF17181C), fontWeight = FontWeight.Bold)
+                }
+                Spacer(Modifier.height(16.dp))
             }
-            Spacer(Modifier.height(16.dp))
         }
     }
 }
@@ -912,76 +932,79 @@ private fun BuyModal(coin: CoinMarketData, cryptoState: CryptoUiState, bankState
 @Composable
 private fun SellModal(coin: CoinMarketData, wallet: CryptoWallet?, cryptoState: CryptoUiState, bankState: BankUiState, cryptoVm: CryptoViewModel, onClose: () -> Unit) {
     val darkMode = LocalDarkMode.current
+    val brand = LocalBrandColor.current
     var amountCrypto by remember { mutableStateOf("") }
+    var txState by remember { mutableStateOf("form") }
     val price = coin.currentPrice
     val mga = cryptoState.mgaPerUsd
     val balance = wallet?.balance ?: 0.0
     val totalMga = if (amountCrypto.toDoubleOrNull() != null) amountCrypto.toDouble() * price * mga else 0.0
 
-    val bg = if (darkMode) Color(0xFF0D0E12) else Color.White
     val cardBg = if (darkMode) Color(0xFF1A1C23) else Color(0xFFF4F5F7)
     val ink = if (darkMode) Color.White else Color(0xFF17181C)
     val line = if (darkMode) Color(0xFF2A2D35) else Color(0xFFE5E7EB)
     val secondaryBg = if (darkMode) Color(0xFF0D0E12) else Color(0xFFECEEF2)
+    val sellGreen = Color(0xFF1A7F37)
 
     ModalBottomSheet(
-        onDismissRequest = onClose,
+        onDismissRequest = { if (txState != "loading") onClose() },
         containerColor = cardBg,
         dragHandle = { BottomSheetDefaults.DragHandle(color = DetailMuted) }
     ) {
-        Column(
-            modifier = Modifier.fillMaxWidth().padding(20.dp).verticalScroll(rememberScrollState())
-        ) {
-            Text("Vendre ${coin.symbol.uppercase()}", color = ink, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(8.dp))
-            Text("Disponible : ${formatCryptoQty(balance)} ${coin.symbol.uppercase()}", color = DetailMuted, fontSize = 13.sp)
-            Spacer(Modifier.height(20.dp))
-
-            OutlinedTextField(
-                value = amountCrypto,
-                onValueChange = { amountCrypto = it.filter { c -> c.isDigit() || c == '.' } },
-                label = { Text("Quantité ${coin.symbol.uppercase()}", color = DetailMuted) },
-                suffix = { Text(coin.symbol.uppercase(), color = DetailMuted) },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedTextColor = ink, unfocusedTextColor = ink,
-                    focusedBorderColor = Green, unfocusedBorderColor = line
-                ),
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
-                horizontalArrangement = Arrangement.End
+        when (txState) {
+            "loading" -> ModalTxLoading(ink, "Vente en cours...")
+            "success" -> ModalTxSuccess(ink, sellGreen, "Vente réussie !", "%,.0f MGA".format(totalMga).replace(",", " ") + " crédités") { onClose() }
+            else -> Column(
+                modifier = Modifier.fillMaxWidth().padding(20.dp).verticalScroll(rememberScrollState())
             ) {
-                TextButton(onClick = { amountCrypto = formatCryptoQty(balance) }) {
-                    Text("Max", color = Green, fontSize = 12.sp)
+                Text("Vendre ${coin.symbol.uppercase()}", color = ink, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(8.dp))
+                Text("Disponible : ${formatCryptoQty(balance)} ${coin.symbol.uppercase()}", color = DetailMuted, fontSize = 13.sp)
+                Spacer(Modifier.height(20.dp))
+                OutlinedTextField(
+                    value = amountCrypto,
+                    onValueChange = { amountCrypto = it.replace(',', '.').filter { c -> c.isDigit() || c == '.' } },
+                    label = { Text("Quantité ${coin.symbol.uppercase()}", color = DetailMuted) },
+                    suffix = { Text(coin.symbol.uppercase(), color = DetailMuted) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = ink, unfocusedTextColor = ink,
+                        focusedBorderColor = Green, unfocusedBorderColor = line
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Row(modifier = Modifier.fillMaxWidth().padding(top = 6.dp), horizontalArrangement = Arrangement.End) {
+                    TextButton(onClick = { amountCrypto = formatCryptoQty(balance) }) {
+                        Text("Max", color = Green, fontSize = 12.sp)
+                    }
                 }
-            }
-
-            if (totalMga > 0) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(secondaryBg).padding(14.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                if (totalMga > 0) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(secondaryBg).padding(14.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("Vous recevrez", color = DetailMuted, fontSize = 13.sp)
+                        Text("%,.0f MGA".format(totalMga).replace(",", " "), color = ink, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+                Spacer(Modifier.height(20.dp))
+                Button(
+                    onClick = {
+                        amountCrypto.toDoubleOrNull()?.let { qty ->
+                            txState = "loading"
+                            cryptoVm.sellCrypto(coin.symbol.uppercase(), qty, price) { success ->
+                                txState = if (success) "success" else "form"
+                            }
+                        }
+                    },
+                    enabled = (amountCrypto.toDoubleOrNull() ?: 0.0) > 0 && (amountCrypto.toDoubleOrNull() ?: 0.0) <= balance,
+                    colors = ButtonDefaults.buttonColors(containerColor = sellGreen),
+                    modifier = Modifier.fillMaxWidth().height(50.dp)
                 ) {
-                    Text("Vous recevrez", color = DetailMuted, fontSize = 13.sp)
-                    Text("%,.0f MGA".format(totalMga).replace(",", " "), color = ink, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                    Text("Confirmer la vente", color = Color.White, fontWeight = FontWeight.Bold)
                 }
+                Spacer(Modifier.height(16.dp))
             }
-
-            Spacer(Modifier.height(20.dp))
-            Button(
-                onClick = {
-                    amountCrypto.toDoubleOrNull()?.let { cryptoVm.sellCrypto(coin.symbol.uppercase(), it, price) }
-                    onClose()
-                },
-                enabled = (amountCrypto.toDoubleOrNull() ?: 0.0) > 0 && (amountCrypto.toDoubleOrNull() ?: 0.0) <= balance,
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1A7F37)),
-                modifier = Modifier.fillMaxWidth().height(50.dp)
-            ) {
-                Text("Confirmer la vente", color = Color.White, fontWeight = FontWeight.Bold)
-            }
-            Spacer(Modifier.height(16.dp))
         }
     }
 }
@@ -996,14 +1019,17 @@ private fun SendModal(coin: CoinMarketData, wallet: CryptoWallet?, cryptoState: 
     var amountCrypto by remember { mutableStateOf("") }
     var toAddress by remember { mutableStateOf("") }
     var showQrScanner by remember { mutableStateOf(false) }
+    var txState by remember { mutableStateOf("form") } // "form" | "loading" | "success"
+    var sendError by remember { mutableStateOf("") }
     val price = coin.currentPrice
     val balance = wallet?.balance ?: 0.0
+    val sliderPct = if (balance > 0) ((amountCrypto.toDoubleOrNull() ?: 0.0) / balance).coerceIn(0.0, 1.0).toFloat() else 0f
 
-    val bg = if (darkMode) Color(0xFF0D0E12) else Color.White
     val cardBg = if (darkMode) Color(0xFF1A1C23) else Color(0xFFF4F5F7)
     val ink = if (darkMode) Color.White else Color(0xFF17181C)
     val line = if (darkMode) Color(0xFF2A2D35) else Color(0xFFE5E7EB)
     val secondaryBg = if (darkMode) Color(0xFF0D0E12) else Color(0xFFECEEF2)
+    val sendBlue = Color(0xFF2775CA)
 
     if (showQrScanner) {
         CryptoQrScanDialog(
@@ -1017,78 +1043,148 @@ private fun SendModal(coin: CoinMarketData, wallet: CryptoWallet?, cryptoState: 
     }
 
     ModalBottomSheet(
-        onDismissRequest = onClose,
+        onDismissRequest = { if (txState != "loading") onClose() },
         containerColor = cardBg,
         dragHandle = { BottomSheetDefaults.DragHandle(color = DetailMuted) }
     ) {
-        Column(
-            modifier = Modifier.fillMaxWidth().padding(20.dp).verticalScroll(rememberScrollState())
-        ) {
-            Text("Envoyer ${coin.symbol.uppercase()}", color = ink, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(8.dp))
-            Text("Disponible : ${formatCryptoQty(balance)} ${coin.symbol.uppercase()}", color = DetailMuted, fontSize = 13.sp)
-            Spacer(Modifier.height(20.dp))
+        when (txState) {
+            "loading" -> ModalTxLoading(ink, "Envoi en cours...")
+            "success" -> ModalTxSuccess(
+                ink, sendBlue, "Transfert réussi !",
+                "${formatCryptoQty(amountCrypto.toDoubleOrNull() ?: 0.0)} ${coin.symbol.uppercase()} envoyé"
+            ) { onClose() }
+            else -> Column(
+                modifier = Modifier.fillMaxWidth().padding(20.dp).verticalScroll(rememberScrollState())
+            ) {
+                Text("Envoyer ${coin.symbol.uppercase()}", color = ink, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(4.dp))
+                Text("Disponible : ${formatCryptoQty(balance)} ${coin.symbol.uppercase()}", color = DetailMuted, fontSize = 13.sp)
+                Spacer(Modifier.height(20.dp))
 
-            OutlinedTextField(
-                value = toAddress,
-                onValueChange = { toAddress = it },
-                label = { Text("Adresse de destination", color = DetailMuted) },
-                trailingIcon = {
-                    IconButton(onClick = { showQrScanner = true }) {
-                        Icon(Icons.Default.QrCodeScanner, contentDescription = "Scanner QR", tint = brand)
-                    }
-                },
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedTextColor = ink, unfocusedTextColor = ink,
-                    focusedBorderColor = brand, unfocusedBorderColor = line
-                ),
-                modifier = Modifier.fillMaxWidth()
-            )
+                OutlinedTextField(
+                    value = toAddress,
+                    onValueChange = { toAddress = it },
+                    label = { Text("Adresse de destination", color = DetailMuted) },
+                    trailingIcon = {
+                        IconButton(onClick = { showQrScanner = true }) {
+                            Icon(Icons.Default.QrCodeScanner, contentDescription = "Scanner QR", tint = brand)
+                        }
+                    },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = ink, unfocusedTextColor = ink,
+                        focusedBorderColor = brand, unfocusedBorderColor = line
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
 
-            Spacer(Modifier.height(12.dp))
-
-            OutlinedTextField(
-                value = amountCrypto,
-                onValueChange = { amountCrypto = it.filter { c -> c.isDigit() || c == '.' } },
-                label = { Text("Quantité ${coin.symbol.uppercase()}", color = DetailMuted) },
-                suffix = { Text(coin.symbol.uppercase(), color = DetailMuted) },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedTextColor = ink, unfocusedTextColor = ink,
-                    focusedBorderColor = brand, unfocusedBorderColor = line
-                ),
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            if ((amountCrypto.toDoubleOrNull() ?: 0.0) > 0) {
                 Spacer(Modifier.height(12.dp))
+
+                OutlinedTextField(
+                    value = amountCrypto,
+                    onValueChange = { v ->
+                        val f = v.replace(',', '.').filter { c -> c.isDigit() || c == '.' }
+                        if (f.count { it == '.' } <= 1) amountCrypto = f
+                    },
+                    label = { Text("Quantité ${coin.symbol.uppercase()}", color = DetailMuted) },
+                    suffix = { Text(coin.symbol.uppercase(), color = DetailMuted) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = ink, unfocusedTextColor = ink,
+                        focusedBorderColor = brand, unfocusedBorderColor = line
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(Modifier.height(10.dp))
+
+                // Percentage quick-select
                 Row(
-                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(secondaryBg).padding(14.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    listOf(25, 50, 75, 100).forEach { pct ->
+                        val isSelected = balance > 0 && amountCrypto == formatCryptoQty(balance * pct / 100.0)
+                        OutlinedButton(
+                            onClick = { amountCrypto = formatCryptoQty(balance * pct / 100.0) },
+                            modifier = Modifier.weight(1f).height(34.dp),
+                            contentPadding = PaddingValues(0.dp),
+                            shape = RoundedCornerShape(8.dp),
+                            border = androidx.compose.foundation.BorderStroke(
+                                1.dp, if (isSelected) sendBlue else line
+                            ),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                containerColor = if (isSelected) sendBlue.copy(alpha = 0.15f) else Color.Transparent,
+                                contentColor = if (isSelected) sendBlue else DetailMuted
+                            )
+                        ) {
+                            Text("$pct%", fontSize = 12.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal)
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(8.dp))
+
+                // Slider gauge
+                Slider(
+                    value = sliderPct,
+                    onValueChange = { pct ->
+                        if (balance > 0) amountCrypto = formatCryptoQty(balance * pct)
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = SliderDefaults.colors(
+                        thumbColor = sendBlue,
+                        activeTrackColor = sendBlue,
+                        inactiveTrackColor = line
+                    )
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text("Valeur estimée", color = DetailMuted, fontSize = 13.sp)
-                    Text("${"%.2f".format((amountCrypto.toDoubleOrNull() ?: 0.0) * price)} USD", color = ink, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-                }
-            }
-
-            Spacer(Modifier.height(20.dp))
-            Button(
-                onClick = {
-                    val qty = amountCrypto.toDoubleOrNull() ?: 0.0
-                    if (qty > 0 && toAddress.isNotBlank()) {
-                        cryptoVm.sendCrypto(coin.symbol.uppercase(), qty, toAddress, price)
+                    Text("0", color = DetailMuted, fontSize = 11.sp)
+                    if (sliderPct > 0.02f) {
+                        Text("${(sliderPct * 100).toInt()}%", color = sendBlue, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
                     }
-                    onClose()
-                },
-                enabled = (amountCrypto.toDoubleOrNull() ?: 0.0) > 0
-                        && (amountCrypto.toDoubleOrNull() ?: 0.0) <= balance
-                        && toAddress.isNotBlank(),
-                colors = ButtonDefaults.buttonColors(containerColor = brand),
-                modifier = Modifier.fillMaxWidth().height(50.dp)
-            ) {
-                Text("Confirmer l'envoi", color = Color.White, fontWeight = FontWeight.Bold)
+                    Text("100%", color = DetailMuted, fontSize = 11.sp)
+                }
+
+                if ((amountCrypto.toDoubleOrNull() ?: 0.0) > 0) {
+                    Spacer(Modifier.height(12.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).background(secondaryBg).padding(14.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("Valeur estimée", color = DetailMuted, fontSize = 13.sp)
+                        Text("${"%.2f".format((amountCrypto.toDoubleOrNull() ?: 0.0) * price)} USD", color = ink, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+
+                Spacer(Modifier.height(20.dp))
+                Button(
+                    onClick = {
+                        val qty = amountCrypto.toDoubleOrNull() ?: 0.0
+                        if (qty > 0 && toAddress.isNotBlank()) {
+                            sendError = ""
+                            txState = "loading"
+                            cryptoVm.sendCrypto(coin.symbol.uppercase(), qty, toAddress, price) { success ->
+                                txState = if (success) "success" else "form"
+                                if (!success) sendError = "Envoi échoué. Vérifiez votre solde."
+                            }
+                        }
+                    },
+                    enabled = (amountCrypto.toDoubleOrNull() ?: 0.0) > 0
+                            && toAddress.isNotBlank(),
+                    colors = ButtonDefaults.buttonColors(containerColor = sendBlue),
+                    modifier = Modifier.fillMaxWidth().height(50.dp)
+                ) {
+                    Text("Confirmer l'envoi", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+                if (sendError.isNotBlank()) {
+                    Spacer(Modifier.height(8.dp))
+                    Text(sendError, color = Color(0xFFEF4444), fontSize = 13.sp, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
+                }
+                Spacer(Modifier.height(16.dp))
             }
-            Spacer(Modifier.height(16.dp))
         }
     }
 }
@@ -1324,11 +1420,49 @@ private fun generateQrBitmap(payload: String, size: Int): Bitmap? = runCatching 
     }
 }.getOrNull()
 
+@Composable
+private fun ModalTxLoading(ink: Color, message: String) {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(48.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        CircularProgressIndicator(color = ink, modifier = Modifier.size(52.dp), strokeWidth = 4.dp)
+        Spacer(Modifier.height(20.dp))
+        Text(message, color = ink, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(6.dp))
+        Text("Veuillez patienter", color = DetailMuted, fontSize = 13.sp)
+        Spacer(Modifier.height(24.dp))
+    }
+}
+
+@Composable
+private fun ModalTxSuccess(ink: Color, accent: Color, title: String, subtitle: String, onClose: () -> Unit) {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 32.dp).padding(top = 32.dp, bottom = 40.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Icon(Icons.Default.CheckCircle, null, tint = accent, modifier = Modifier.size(64.dp))
+        Spacer(Modifier.height(16.dp))
+        Text(title, color = ink, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(8.dp))
+        Text(subtitle, color = DetailMuted, fontSize = 14.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+        Spacer(Modifier.height(28.dp))
+        Button(
+            onClick = onClose,
+            colors = ButtonDefaults.buttonColors(containerColor = accent),
+            modifier = Modifier.fillMaxWidth().height(50.dp),
+            shape = RoundedCornerShape(25.dp)
+        ) {
+            Text("Fermer", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+        }
+    }
+}
+
 private fun formatCryptoQty(qty: Double): String {
     if (qty == 0.0) return "0"
     return when {
-        qty >= 1.0    -> "%.4f".format(qty).trimEnd('0').trimEnd('.')
-        qty >= 0.0001 -> "%.6f".format(qty).trimEnd('0').trimEnd('.')
-        else          -> "%.8f".format(qty).trimEnd('0').trimEnd('.')
+        qty >= 1.0    -> String.format(Locale.US, "%.4f", qty).trimEnd('0').trimEnd('.')
+        qty >= 0.0001 -> String.format(Locale.US, "%.6f", qty).trimEnd('0').trimEnd('.')
+        else          -> String.format(Locale.US, "%.8f", qty).trimEnd('0').trimEnd('.')
     }
 }

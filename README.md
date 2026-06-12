@@ -71,5 +71,5 @@ adb install app/build/outputs/apk/debug/app-debug.apk
 |-------|------------------------|--------------|
 | User  | (voir DatabaseSeeder)  | password     |
 | Admin | admin@bankingapp.mg    | Admin@2026   |
-
+vgggggg-r
 Panel admin : [http://localhost:8000/admin](http://localhost:8000/admin)

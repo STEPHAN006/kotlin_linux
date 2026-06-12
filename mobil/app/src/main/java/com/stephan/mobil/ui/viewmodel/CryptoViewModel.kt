@@ -80,19 +80,23 @@ class CryptoViewModel(
         )
     }
 
-    fun buyCrypto(symbol: String, amountMga: Double, priceUsd: Double) = viewModelScope.launch {
+    fun buyCrypto(symbol: String, amountMga: Double, priceUsd: Double, onResult: (Boolean) -> Unit = {}) = viewModelScope.launch {
         val mga = _uiState.value.mgaPerUsd
         repository.buyCrypto(symbol, amountMga, priceUsd, mga).fold(
             onSuccess = {
                 _uiState.value = _uiState.value.copy(message = "Achat $symbol effectué ✓")
+                onResult(true)
                 loadCrypto()
                 onBalanceChanged()
             },
-            onFailure = { _uiState.value = _uiState.value.copy(error = it.message) }
+            onFailure = {
+                _uiState.value = _uiState.value.copy(error = it.message)
+                onResult(false)
+            }
         )
     }
 
-    fun sellCrypto(symbol: String, cryptoAmount: Double, priceUsd: Double) = viewModelScope.launch {
+    fun sellCrypto(symbol: String, cryptoAmount: Double, priceUsd: Double, onResult: (Boolean) -> Unit = {}) = viewModelScope.launch {
         val mga = _uiState.value.mgaPerUsd
         repository.sellCrypto(symbol, cryptoAmount, priceUsd, mga).fold(
             onSuccess = { result ->
@@ -100,33 +104,47 @@ class CryptoViewModel(
                 _uiState.value = _uiState.value.copy(
                     message = "Vente $symbol → ${String.format("%,.0f", totalMga)} MGA ✓"
                 )
+                onResult(true)
                 loadCrypto()
                 onBalanceChanged()
             },
-            onFailure = { _uiState.value = _uiState.value.copy(error = it.message) }
+            onFailure = {
+                _uiState.value = _uiState.value.copy(error = it.message)
+                onResult(false)
+            }
         )
     }
 
-    fun sendCrypto(symbol: String, cryptoAmount: Double, toAddress: String, priceUsd: Double) = viewModelScope.launch {
+    fun sendCrypto(symbol: String, cryptoAmount: Double, toAddress: String, priceUsd: Double, onResult: (Boolean) -> Unit = {}) = viewModelScope.launch {
         val mga = _uiState.value.mgaPerUsd
         repository.sendCrypto(symbol, cryptoAmount, toAddress, priceUsd, mga).fold(
-            onSuccess = { _uiState.value = _uiState.value.copy(message = "Envoi $symbol confirmé ✓") },
-            onFailure = { _uiState.value = _uiState.value.copy(error = it.message) }
+            onSuccess = {
+                _uiState.value = _uiState.value.copy(message = "Envoi $symbol confirmé ✓")
+                onResult(true)
+            },
+            onFailure = {
+                _uiState.value = _uiState.value.copy(error = it.message)
+                onResult(false)
+            }
         )
         loadCrypto()
     }
 
-    fun swapCrypto(fromSymbol: String, fromAmount: Double, fromPriceUsd: Double, toSymbol: String, toPriceUsd: Double) = viewModelScope.launch {
+    fun swapCrypto(fromSymbol: String, fromAmount: Double, fromPriceUsd: Double, toSymbol: String, toPriceUsd: Double, onResult: (Boolean) -> Unit = {}) = viewModelScope.launch {
         val mga = _uiState.value.mgaPerUsd
         repository.swapCrypto(fromSymbol, fromAmount, fromPriceUsd, toSymbol, toPriceUsd, mga).fold(
             onSuccess = { result ->
                 _uiState.value = _uiState.value.copy(
                     message = "Swap $fromSymbol → $toSymbol effectué ✓"
                 )
+                onResult(true)
                 loadCrypto()
                 onBalanceChanged()
             },
-            onFailure = { _uiState.value = _uiState.value.copy(error = it.message) }
+            onFailure = {
+                _uiState.value = _uiState.value.copy(error = it.message)
+                onResult(false)
+            }
         )
     }
 

@@ -135,6 +135,7 @@ Route::middleware(ForceJsonResponse::class)->group(function () {
         // Customer support chat
         Route::get('/support/ticket', [SupportController::class, 'getOrCreateTicket']);
         Route::post('/support/ticket/{ticketId}/messages', [SupportController::class, 'sendMessage']);
+        Route::patch('/support/ticket/{ticketId}/close', [SupportController::class, 'closeTicket']);
 
         /*
         |------------------------------------------------------------------

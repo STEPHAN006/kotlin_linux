@@ -48,4 +48,27 @@ class AdminSupportController extends Controller
 
         return redirect()->route('admin.support.show', $id)->with('success', 'Réponse envoyée.');
     }
+
+    public function close(int $id)
+    {
+        $ticket = SupportTicket::findOrFail($id);
+
+        if ($ticket->status === 'open') {
+            SupportMessage::create([
+                'ticket_id' => $ticket->id,
+                'sender'    => 'admin',
+                'message'   => '✅ Ce ticket a été clôturé par l\'équipe SCpay. Merci de nous avoir contactés. N\'hésitez pas à ouvrir un nouveau ticket si vous avez d\'autres questions.',
+            ]);
+
+            $ticket->update(['status' => 'closed']);
+
+            UserNotification::create([
+                'user_id' => $ticket->user_id,
+                'title'   => 'Ticket support clôturé',
+                'body'    => 'Votre ticket #' . $ticket->id . ' a été clôturé par le support SCpay.',
+            ]);
+        }
+
+        return redirect()->route('admin.support.show', $id)->with('success', 'Ticket clôturé.');
+    }
 }

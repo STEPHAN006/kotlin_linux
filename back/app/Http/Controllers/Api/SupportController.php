@@ -72,6 +72,29 @@ class SupportController extends Controller
         ]);
     }
 
+    /** Close the ticket (user-initiated). */
+    public function closeTicket(Request $request, int $ticketId): JsonResponse
+    {
+        $ticket = SupportTicket::where('user_id', $request->user()->id)
+            ->where('status', 'open')
+            ->findOrFail($ticketId);
+
+        $ticket->update(['status' => 'closed']);
+
+        SupportMessage::create([
+            'ticket_id' => $ticket->id,
+            'sender'    => 'admin',
+            'message'   => '✅ Ce ticket a été clôturé. Merci de nous avoir contactés. N\'hésitez pas à ouvrir un nouveau ticket si vous avez d\'autres questions.',
+        ]);
+
+        $ticket->load('messages');
+
+        return response()->json([
+            'success' => true,
+            'data'    => $this->formatTicket($ticket),
+        ]);
+    }
+
     private function formatTicket(SupportTicket $ticket): array
     {
         return [

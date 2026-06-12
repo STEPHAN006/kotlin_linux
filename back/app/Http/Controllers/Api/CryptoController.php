@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\CryptoTransaction;
 use App\Models\CryptoWallet;
+use App\Models\UserNotification;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -180,7 +181,12 @@ class CryptoController extends Controller
         $totalMga = $cryptoAmount * (float) $request->price_usd * (float) $request->mga_per_usd;
         $txHash   = '0x' . bin2hex(random_bytes(32));
 
-        DB::transaction(function () use ($user, $wallet, $request, $cryptoAmount, $totalMga, $txHash) {
+        $recipientWallet = CryptoWallet::where('symbol', $request->symbol)
+            ->where('address', $request->to_address)
+            ->where('user_id', '!=', $user->id)
+            ->first();
+
+        DB::transaction(function () use ($user, $wallet, $request, $cryptoAmount, $totalMga, $txHash, $recipientWallet) {
             $wallet->decrement('balance', $cryptoAmount);
 
             CryptoTransaction::create([
@@ -193,6 +199,27 @@ class CryptoController extends Controller
                 'to_address' => $request->to_address,
                 'tx_hash'    => $txHash,
             ]);
+
+            if ($recipientWallet) {
+                $recipientWallet->increment('balance', $cryptoAmount);
+
+                CryptoTransaction::create([
+                    'user_id'      => $recipientWallet->user_id,
+                    'type'         => 'receive',
+                    'symbol'       => $request->symbol,
+                    'amount'       => $cryptoAmount,
+                    'price_usd'    => (float) $request->price_usd,
+                    'total_mga'    => $totalMga,
+                    'from_address' => $wallet->address,
+                    'tx_hash'      => $txHash,
+                ]);
+
+                UserNotification::create_for(
+                    $recipientWallet->user_id,
+                    "Réception de {$request->symbol}",
+                    "Vous avez reçu " . rtrim(rtrim(number_format($cryptoAmount, 8, '.', ''), '0'), '.') . " {$request->symbol}"
+                );
+            }
         });
 
         return response()->json([

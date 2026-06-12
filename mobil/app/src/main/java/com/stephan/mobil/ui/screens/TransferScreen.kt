@@ -38,8 +38,8 @@ fun TransferScreen(state: BankUiState, vm: BankViewModel) {
     val accounts = state.balance.accounts
     var senderId by remember(accounts) { mutableIntStateOf(accounts.firstOrNull()?.id ?: 1) }
     var receiverId by remember(accounts) { mutableIntStateOf(accounts.drop(1).firstOrNull()?.id ?: accounts.firstOrNull()?.id ?: 2) }
-    var amountText by remember { mutableStateOf("600000") }
-    var noteText by remember { mutableStateOf("Virement mensuel") }
+    var amountText by remember { mutableStateOf("") }
+    var noteText by remember { mutableStateOf("") }
     var otpCode by remember { mutableStateOf("") }
     val pageBg = if (darkMode) BgBase else Color.White
     val ink = if (darkMode) TextPrimary else Color(0xFF17181C)
@@ -151,13 +151,18 @@ fun TransferScreen(state: BankUiState, vm: BankViewModel) {
                         val amount = amountText.toDoubleOrNull() ?: 0.0
                         vm.createTransfer(senderId, receiverId, amount, noteText)
                     },
+                    enabled = !state.loading && (amountText.toDoubleOrNull() ?: 0.0) >= 1000,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(54.dp),
                     shape = RoundedCornerShape(27.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = brand)
                 ) {
-                    Icon(imageVector = Icons.AutoMirrored.Filled.Send, contentDescription = null, tint = Color.White)
+                    if (state.loading) {
+                        CircularProgressIndicator(color = Color.White, modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                    } else {
+                        Icon(imageVector = Icons.AutoMirrored.Filled.Send, contentDescription = null, tint = Color.White)
+                    }
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = "Exécuter le virement",
