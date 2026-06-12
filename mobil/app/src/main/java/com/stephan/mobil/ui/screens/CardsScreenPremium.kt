@@ -230,31 +230,26 @@ fun CardsScreenPremium(
         // ── Transaction list ─────────────────────────────────────────────
         if (state.transactions.isEmpty()) {
             item {
-                // Mock transactions like the image
-                val mockTxns = listOf(
-                    Triple("ANTHROPIC* CLAUDE SUB", "-20,00 USD", "2026-06-03"),
-                    Triple("CLAUDE.AI SUBSCRIPTION", "-20,00 USD", "2026-04-15"),
-                    Triple("Achat par carte", "-10,00 USD", "2026-03-07"),
-                )
-                var lastDate = ""
-                mockTxns.forEach { (title, amount, date) ->
-                    if (date != lastDate) {
-                        lastDate = date
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 40.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(
+                            Icons.Default.ReceiptLong,
+                            contentDescription = null,
+                            tint = CardMuted.copy(alpha = 0.4f),
+                            modifier = Modifier.size(40.dp)
+                        )
+                        Spacer(Modifier.height(10.dp))
                         Text(
-                            formatDateHeader(date),
+                            "Aucune transaction",
                             color = CardMuted,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp)
+                            fontSize = 14.sp
                         )
                     }
-                    CardTransactionRow(
-                        title = title,
-                        subtitle = "•• 1000 · $date 14:01:20",
-                        amount = amount,
-                        status = "Autorisé",
-                        ink = ink
-                    )
                 }
             }
         } else {

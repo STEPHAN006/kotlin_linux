@@ -1,5 +1,6 @@
 package com.stephan.mobil.ui.screens
 
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import androidx.compose.foundation.background
@@ -30,6 +31,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.stephan.mobil.BuildConfig
+import com.stephan.mobil.data.api.ApiClient
 import com.stephan.mobil.security.SecurityUtil
 import com.stephan.mobil.ui.theme.*
 import com.stephan.mobil.ui.theme.LocalDarkMode
@@ -67,6 +69,9 @@ fun SettingsScreen(
     var notifTransactions  by remember { mutableStateOf(notifPrefs.getBoolean("transactions", true)) }
     var notifSecurity      by remember { mutableStateOf(notifPrefs.getBoolean("security", true)) }
     var notifMarketing     by remember { mutableStateOf(notifPrefs.getBoolean("marketing", false)) }
+
+    var serverUrl by remember { mutableStateOf(ApiClient.getBaseUrl(context)) }
+    var urlApplied by remember { mutableStateOf(false) }
 
     val bg     = if (darkMode) Color(0xFF101114) else SettingsBg
     val cardBg = if (darkMode) Color(0xFF1E1F24) else SettingsCard
@@ -365,6 +370,54 @@ fun SettingsScreen(
                     ink = ink,
                     onClick = { showHelp = true }
                 )
+            }
+        }
+
+        item {
+            SettingsSection(title = "Serveur", cardBg = cardBg, ink = ink) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OutlinedTextField(
+                        value = serverUrl,
+                        onValueChange = { serverUrl = it; urlApplied = false },
+                        label = { Text("URL du serveur Laravel", color = SettingsMuted, fontSize = 12.sp) },
+                        placeholder = { Text("http://192.168.x.x:8000/api/", color = SettingsMuted, fontSize = 12.sp) },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = ink, unfocusedTextColor = ink,
+                            focusedBorderColor = if (darkMode) Color.White else Color(0xFF17181C),
+                            unfocusedBorderColor = SettingsMuted.copy(alpha = 0.4f)
+                        ),
+                        modifier = Modifier.fillMaxWidth(),
+                        textStyle = androidx.compose.ui.text.TextStyle(fontSize = 13.sp)
+                    )
+                    Button(
+                        onClick = {
+                            val normalized = serverUrl.trim().let {
+                                if (!it.startsWith("http")) "http://$it" else it
+                            }.trimEnd('/') + "/"
+                            serverUrl = normalized
+                            ApiClient.saveCustomUrl(context, normalized)
+                            urlApplied = true
+                            (context as? Activity)?.recreate()
+                        },
+                        enabled = serverUrl.isNotBlank(),
+                        modifier = Modifier.fillMaxWidth().height(44.dp),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (darkMode) Color.White else Color(0xFF17181C)
+                        )
+                    ) {
+                        Icon(Icons.Default.Wifi, null, modifier = Modifier.size(16.dp),
+                            tint = if (darkMode) Color(0xFF17181C) else Color.White)
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            if (urlApplied) "Appliqué ✓" else "Appliquer et redémarrer",
+                            fontSize = 13.sp, fontWeight = FontWeight.SemiBold,
+                            color = if (darkMode) Color(0xFF17181C) else Color.White
+                        )
+                    }
+                }
             }
         }
 

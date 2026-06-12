@@ -76,6 +76,7 @@ Route::prefix('admin')->middleware(AdminWebAuth::class)->name('admin.')->group(f
     Route::get('/support', [AdminSupportController::class, 'index'])->name('support.index');
     Route::get('/support/{ticket}', [AdminSupportController::class, 'show'])->name('support.show');
     Route::post('/support/{ticket}/reply', [AdminSupportController::class, 'reply'])->name('support.reply');
+    Route::post('/support/{ticket}/close', [AdminSupportController::class, 'close'])->name('support.close');
 
     // KYC / Identity Verification
     Route::get('/kyc', [AdminKycController::class, 'index'])->name('kyc');

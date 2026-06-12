@@ -24,6 +24,9 @@ interface ApiService {
     @POST("register")
     suspend fun register(@Body request: RegisterRequest): Response<ApiEnvelope<AuthData>>
 
+    @POST("logout")
+    suspend fun logout(): Response<ApiEnvelope<Unit>>
+
     @GET("user")
     suspend fun getCurrentUser(): Response<ApiEnvelope<User>>
 
@@ -94,6 +97,11 @@ interface ApiService {
         @Path("ticketId") ticketId: Int,
         @Part("message") message: RequestBody,
         @Part image: MultipartBody.Part?
+    ): Response<ApiEnvelope<SupportTicketDetail>>
+
+    @PATCH("support/ticket/{ticketId}/close")
+    suspend fun closeSupportTicket(
+        @Path("ticketId") ticketId: Int
     ): Response<ApiEnvelope<SupportTicketDetail>>
 
     @Streaming

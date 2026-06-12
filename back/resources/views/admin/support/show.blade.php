@@ -68,7 +68,7 @@
             @error('message')
             <p class="text-error text-body-md mt-2">{{ $message }}</p>
             @enderror
-            <div class="flex gap-3 mt-3">
+            <div class="flex flex-wrap gap-3 mt-3">
                 <button type="submit" class="btn-primary px-5 py-2 text-body-md rounded-lg inline-flex items-center gap-2">
                     <span class="material-symbols-outlined text-[15px]">send</span>
                     Envoyer la réponse
@@ -80,6 +80,25 @@
                 </a>
             </div>
         </form>
+    </div>
+
+    {{-- Close ticket --}}
+    <div class="card p-4 border border-red-200 bg-red-50">
+        <div class="flex items-center justify-between gap-4">
+            <div>
+                <p class="text-body-md font-semibold text-red-700">Clôturer ce ticket</p>
+                <p class="text-label-md text-red-500 mt-0.5">Le client sera notifié et pourra ouvrir un nouveau ticket.</p>
+            </div>
+            <form method="POST" action="{{ route('admin.support.close', $ticket->id) }}"
+                  onsubmit="return confirm('Clôturer ce ticket ?')">
+                @csrf
+                <button type="submit"
+                        class="inline-flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-body-md rounded-lg transition-colors">
+                    <span class="material-symbols-outlined text-[16px]">lock</span>
+                    Clôturer
+                </button>
+            </form>
+        </div>
     </div>
     @else
     <div class="card p-5 text-center text-on-surface-variant text-body-md">

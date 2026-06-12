@@ -201,34 +201,6 @@ fun ProfileScreen(
                         fontWeight = FontWeight.Bold
                     )
 
-                    // Mock Mode Switch
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(imageVector = Icons.Default.Dns, contentDescription = null, tint = muted, modifier = Modifier.size(20.dp))
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Column {
-                                Text(text = "Mode Démo / Mock", color = ink, fontSize = 14.sp, fontWeight = FontWeight.Medium)
-                                Text(text = "Utiliser des fausses données hors réseau", color = muted, fontSize = 11.sp)
-                            }
-                        }
-                        Switch(
-                            checked = state.mockMode,
-                            onCheckedChange = { vm.setMockMode(it) },
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = if (darkMode) BgSurface else Color.White,
-                                checkedTrackColor = brand,
-                                uncheckedThumbColor = muted,
-                                uncheckedTrackColor = if (darkMode) BgSurfaceHigh else Color(0xFFE7E9EE)
-                            )
-                        )
-                    }
-
-                    Divider(color = border)
-
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,

@@ -425,6 +425,11 @@ class BankRepository(
         apiService.addSupportMessage(ticketId, msgBody, imagePart).bodyOrThrow()
     }
 
+    suspend fun closeSupportTicket(ticketId: Int): Result<SupportTicketDetail> = runCatching {
+        if (useMockData) error("Non disponible en mode mock")
+        apiService.closeSupportTicket(ticketId).bodyOrThrow()
+    }
+
     suspend fun updateProfile(
         currentPassword: String,
         name: String? = null,
@@ -460,7 +465,8 @@ class BankRepository(
         apiService.deleteScheduledWithdrawal(id).bodyOrThrow()
     }
 
-    fun logout() {
+    suspend fun logout() {
+        try { apiService.logout() } catch (_: Exception) {}
         SecurityUtil.clearData(context)
         useMockData = false
     }

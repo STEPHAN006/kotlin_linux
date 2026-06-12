@@ -304,6 +304,7 @@ data class CryptoTxn(
     @SerializedName("price_usd") val priceUsd: Double,
     @SerializedName("total_mga") val totalMga: Double,
     @SerializedName("to_address") val toAddress: String? = null,
+    @SerializedName("from_address") val fromAddress: String? = null,
     @SerializedName("tx_hash") val txHash: String? = null,
     @SerializedName("created_at") val createdAt: String? = null
 )

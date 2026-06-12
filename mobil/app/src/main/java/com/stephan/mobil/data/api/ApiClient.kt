@@ -13,9 +13,23 @@ import java.util.concurrent.TimeUnit
 
 object ApiClient {
 
+    private const val PREFS_NAME = "scpay_app"
+    private const val KEY_CUSTOM_URL = "custom_api_url"
+
     // URL et host injectés via BuildConfig (debug = local.properties, release = production HTTPS)
-    private val BASE_URL get() = BuildConfig.API_BASE_URL
     private val PROD_HOST get() = BuildConfig.API_HOST
+
+    fun getBaseUrl(context: Context): String =
+        context.getSharedPreferences(PREFS_NAME, android.content.Context.MODE_PRIVATE)
+            .getString(KEY_CUSTOM_URL, null)
+            ?.takeIf { it.isNotBlank() }
+            ?: BuildConfig.API_BASE_URL
+
+    fun saveCustomUrl(context: Context, url: String) {
+        context.getSharedPreferences(PREFS_NAME, android.content.Context.MODE_PRIVATE)
+            .edit().putString(KEY_CUSTOM_URL, url.trimEnd('/') + "/").apply()
+        reset()
+    }
 
     // Pins SHA-256 du certificat de production.
     // Obtenir avec : openssl s_client -connect api.scpay.mg:443 | openssl x509 -pubkey -noout | openssl pkey -pubin -outform DER | openssl dgst -sha256 -binary | base64
@@ -29,11 +43,15 @@ object ApiClient {
         .build()
 
     private var retrofit: Retrofit? = null
+    private var builtForUrl: String = ""
 
-    fun reset() { retrofit = null }
+    fun reset() { retrofit = null; builtForUrl = "" }
 
     fun getClient(context: Context): Retrofit {
-        if (retrofit == null) {
+        val currentUrl = getBaseUrl(context)
+        if (retrofit == null || builtForUrl != currentUrl) {
+            builtForUrl = currentUrl
+
             val authInterceptor = Interceptor { chain ->
                 val requestBuilder = chain.request().newBuilder()
                 val token = SecurityUtil.getAuthToken(context)
@@ -58,12 +76,12 @@ object ApiClient {
             }
 
             // Certificate pinning uniquement en HTTPS (production)
-            if (BASE_URL.startsWith("https://")) {
+            if (currentUrl.startsWith("https://")) {
                 builder.certificatePinner(certificatePinner)
             }
 
             retrofit = Retrofit.Builder()
-                .baseUrl(BASE_URL)
+                .baseUrl(currentUrl)
                 .client(builder.build())
                 .addConverterFactory(GsonConverterFactory.create())
                 .build()

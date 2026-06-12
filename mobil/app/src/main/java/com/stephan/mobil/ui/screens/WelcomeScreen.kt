@@ -18,6 +18,9 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import com.stephan.mobil.data.api.ApiClient
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -50,6 +53,7 @@ fun WelcomeScreen(
 ) {
     var showLoginOverlay by remember { mutableStateOf(false) }
     var showRegisterOverlay by remember { mutableStateOf(false) }
+    var showServerDialog by remember { mutableStateOf(false) }
     val view = LocalView.current
 
     DisposableEffect(view) {
@@ -264,6 +268,83 @@ fun WelcomeScreen(
                     fontWeight = FontWeight.Medium,
                     letterSpacing = 1.2.sp
                 )
+            }
+        }
+
+        // Bouton serveur — coin haut droit
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .statusBarsPadding()
+                .padding(end = 12.dp, top = 4.dp)
+        ) {
+            IconButton(onClick = { showServerDialog = true }) {
+                Icon(
+                    Icons.Default.WifiFind,
+                    contentDescription = "Serveur",
+                    tint = Color.White.copy(alpha = 0.45f),
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+        }
+
+        // Dialog changement URL serveur
+        if (showServerDialog) {
+            var urlField by remember { mutableStateOf(ApiClient.getBaseUrl(context)) }
+            Dialog(
+                onDismissRequest = { showServerDialog = false },
+                properties = DialogProperties(dismissOnClickOutside = true)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .background(Color(0xFF1A1C23), androidx.compose.foundation.shape.RoundedCornerShape(20.dp))
+                        .padding(24.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Wifi, null, tint = Color.White, modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(10.dp))
+                        Text("Serveur Laravel", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    }
+                    OutlinedTextField(
+                        value = urlField,
+                        onValueChange = { urlField = it },
+                        label = { Text("URL du serveur", color = Color(0xFF8B8F98), fontSize = 12.sp) },
+                        placeholder = { Text("http://192.168.x.x:8000/api/", color = Color(0xFF8B8F98), fontSize = 12.sp) },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
+                            focusedBorderColor = Color.White,
+                            unfocusedBorderColor = Color(0xFF3A3D45)
+                        ),
+                        modifier = Modifier.fillMaxWidth(),
+                        textStyle = androidx.compose.ui.text.TextStyle(fontSize = 13.sp)
+                    )
+                    Button(
+                        onClick = {
+                            val normalized = urlField.trim().let {
+                                if (!it.startsWith("http")) "http://$it" else it
+                            }.trimEnd('/') + "/"
+                            ApiClient.saveCustomUrl(context, normalized)
+                            showServerDialog = false
+                            (context as? Activity)?.recreate()
+                        },
+                        enabled = urlField.isNotBlank(),
+                        modifier = Modifier.fillMaxWidth().height(46.dp),
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.White)
+                    ) {
+                        Text("Appliquer et redémarrer", color = Color(0xFF17181C), fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    }
+                    TextButton(
+                        onClick = { showServerDialog = false },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Annuler", color = Color(0xFF8B8F98), fontSize = 13.sp)
+                    }
+                }
             }
         }
 

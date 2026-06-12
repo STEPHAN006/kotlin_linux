@@ -321,19 +321,43 @@ fun AssetsScreen(
             }
 
             // Crypto transaction history
-            if (cryptoState.cryptoTxns.isNotEmpty()) {
+            item {
+                Spacer(Modifier.height(16.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Historique crypto", color = AssetMuted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                }
+                Divider(color = line)
+            }
+            if (cryptoState.cryptoTxns.isEmpty()) {
                 item {
-                    Spacer(Modifier.height(16.dp))
-                    Row(
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 20.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                            .padding(vertical = 32.dp),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Text("Historique crypto", color = AssetMuted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                Icons.Default.ReceiptLong,
+                                contentDescription = null,
+                                tint = AssetMuted.copy(alpha = 0.4f),
+                                modifier = Modifier.size(40.dp)
+                            )
+                            Spacer(Modifier.height(10.dp))
+                            Text(
+                                "Aucune transaction crypto",
+                                color = AssetMuted,
+                                fontSize = 14.sp
+                            )
+                        }
                     }
-                    Divider(color = line)
                 }
+            } else {
                 items(cryptoState.cryptoTxns) { txn ->
                     CryptoTxnRow(txn, line, ink)
                 }
@@ -346,10 +370,13 @@ fun AssetsScreen(
 @Composable
 private fun CryptoTxnRow(txn: CryptoTxn, line: Color, ink: Color) {
     val (icon, color, label) = when (txn.type) {
-        "buy"  -> Triple(Icons.Default.ShoppingCart, Color(0xFF10B981), "Achat")
-        "sell" -> Triple(Icons.Default.Sell, SemanticDanger, "Vente")
-        else   -> Triple(Icons.Default.Send, Color(0xFF2775CA), "Envoi")
+        "buy"     -> Triple(Icons.Default.ShoppingCart, Color(0xFF10B981), "Achat")
+        "sell"    -> Triple(Icons.Default.Sell,         SemanticDanger,     "Vente")
+        "receive" -> Triple(Icons.Default.CallReceived, Color(0xFF10B981),  "Reçu")
+        "swap"    -> Triple(Icons.Default.SwapHoriz,    Color(0xFF8B5CF6),  "Swap")
+        else      -> Triple(Icons.Default.Send,         Color(0xFF2775CA),  "Envoi")
     }
+    val isDebit = txn.type == "buy" || txn.type == "send"
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -368,11 +395,13 @@ private fun CryptoTxnRow(txn: CryptoTxn, line: Color, ink: Color) {
             Text(txn.createdAt?.take(10) ?: "", color = AssetMuted, fontSize = 12.sp)
         }
         Column(horizontalAlignment = Alignment.End) {
-            Text(
-                "${if (txn.type == "buy") "-" else "+"}%,.0f MGA".format(txn.totalMga).replace(",", " "),
-                color = if (txn.type == "buy") SemanticDanger else Color(0xFF10B981),
-                fontSize = 14.sp, fontWeight = FontWeight.Bold
-            )
+            if (txn.type != "swap") {
+                Text(
+                    "${if (isDebit) "-" else "+"}%,.0f MGA".format(txn.totalMga).replace(",", " "),
+                    color = if (isDebit) SemanticDanger else Color(0xFF10B981),
+                    fontSize = 14.sp, fontWeight = FontWeight.Bold
+                )
+            }
             Text("%.6f ${txn.symbol}".trimEnd('0').trimEnd('.'), color = AssetMuted, fontSize = 11.sp)
         }
     }

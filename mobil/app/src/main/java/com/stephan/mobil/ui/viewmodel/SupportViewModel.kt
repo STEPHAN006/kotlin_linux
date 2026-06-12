@@ -39,6 +39,23 @@ class SupportViewModel(private val repository: BankRepository) : ViewModel() {
         )
     }
 
+    fun closeTicket() = viewModelScope.launch {
+        val ticket = _uiState.value.supportTicket ?: return@launch
+        _uiState.value = _uiState.value.copy(supportLoading = true)
+        repository.closeSupportTicket(ticket.id).fold(
+            onSuccess = { _uiState.value = _uiState.value.copy(supportTicket = it, supportLoading = false) },
+            onFailure = { _uiState.value = _uiState.value.copy(supportLoading = false, error = it.message) }
+        )
+    }
+
+    fun startNewTicket() = viewModelScope.launch {
+        _uiState.value = _uiState.value.copy(supportLoading = true, supportTicket = null)
+        repository.getOrCreateSupportTicket().fold(
+            onSuccess = { _uiState.value = _uiState.value.copy(supportTicket = it, supportLoading = false) },
+            onFailure = { _uiState.value = _uiState.value.copy(supportLoading = false, error = it.message) }
+        )
+    }
+
     fun consumeMessages() {
         _uiState.value = _uiState.value.copy(message = null, error = null)
     }
